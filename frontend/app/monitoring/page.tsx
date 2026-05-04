@@ -13,7 +13,7 @@ import {
   IncidentMapItem,
   IncidentType,
   incidentTypeConfig,
-} from '@/components/monitoring/incident-map';
+} from '@/components/monitoring/types';
 
 const IncidentMap = dynamic(() => import('@/components/monitoring/incident-map'), { ssr: false });
 
