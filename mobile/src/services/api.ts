@@ -23,7 +23,7 @@ export class ApiError extends Error {
 // ─── Base URL ────────────────────────────────────────────────
 // Priority: env var > fallback
 // Android emulator: 10.0.2.2 | Physical device: your LAN IP
-export const API_BASE_URL =
+const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL || 'https://resqnet-jos9.onrender.com';
 
 // ─── Axios Instance ──────────────────────────────────────────
