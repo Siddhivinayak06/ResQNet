@@ -8,11 +8,14 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { getApiBaseUrl } from '@/lib/api-client';
 import { disconnectSocketClient, getSocketClient } from '@/lib/socket-client';
-import IncidentMap, {
+import dynamic from 'next/dynamic';
+import {
   IncidentMapItem,
   IncidentType,
   incidentTypeConfig,
 } from '@/components/monitoring/incident-map';
+
+const IncidentMap = dynamic(() => import('@/components/monitoring/incident-map'), { ssr: false });
 
 type FilterType = 'all' | IncidentType;
 
