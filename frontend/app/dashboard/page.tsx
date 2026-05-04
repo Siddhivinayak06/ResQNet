@@ -13,35 +13,7 @@ import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api-client';
 import { disconnectSocketClient, getSocketClient } from '@/lib/socket-client';
 
-interface Report {
-  id: string;
-  description: string;
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-  severity: 'high' | 'medium' | 'low';
-  status: string;
-  reportedBy?: string;
-  assignedTo?: string;
-}
-
-interface Responder {
-  id: string;
-  name: string;
-  status: string;
-  location: string;
-  latitude: number;
-  longitude: number;
-}
-
-interface Hospital {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  emergencyCapacity: number;
-  currentPatients: number;
-}
+import { Report, Responder, Hospital } from '@/lib/auth-types';
 
 export default function DashboardPage() {
   const router = useRouter();

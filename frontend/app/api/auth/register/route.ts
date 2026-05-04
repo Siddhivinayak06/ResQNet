@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createUser, getUserByEmail, initializeDatabase } from '@/lib/database';
 import { createToken } from '@/lib/jwt';
 import { User, UserRole } from '@/lib/auth-types';
-import { v4 as uuidv4 } from 'crypto';
 
 initializeDatabase();
 
