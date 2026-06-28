@@ -4,7 +4,7 @@
  */
 
 export const colors = {
-  // ─── Primary (Red) ──────────────────────────
+  // ─── Primary (Vibrant Crimson) ──────────────────────────
   primary50: '#fef2f2',
   primary100: '#fee2e2',
   primary200: '#fecaca',
@@ -16,7 +16,7 @@ export const colors = {
   primary800: '#991b1b',
   primary900: '#7f1d1d',
 
-  // ─── Dark (Slate) ──────────────────────────
+  // ─── Dark (Deep Slate) ──────────────────────────
   dark50: '#f8fafc',
   dark100: '#f1f5f9',
   dark200: '#e2e8f0',
@@ -34,7 +34,7 @@ export const colors = {
   black: '#000000',
   transparent: 'transparent',
 
-  success: '#22c55e',
+  success: '#10b981',
   warning: '#f59e0b',
   danger: '#ef4444',
   info: '#3b82f6',
@@ -43,9 +43,13 @@ export const colors = {
   // ─── Status colors ────────────────────────
   statusPending: '#f59e0b',
   statusActive: '#ef4444',
-  statusResolved: '#22c55e',
+  statusResolved: '#10b981',
 
-  // ─── Semi-transparent ─────────────────────
+  // ─── Semi-transparent (Glass) ─────────────
+  glassDark: 'rgba(2, 6, 23, 0.65)',
+  glassCard: 'rgba(15, 23, 42, 0.7)',
+  glassLight: 'rgba(255, 255, 255, 0.1)',
+  
   red900_30: 'rgba(127, 29, 29, 0.3)',
   red700_50: 'rgba(185, 28, 28, 0.5)',
   amber900_30: 'rgba(120, 53, 15, 0.3)',
@@ -53,36 +57,38 @@ export const colors = {
   blue900_20: 'rgba(30, 58, 138, 0.2)',
   primary600_10: 'rgba(220, 38, 38, 0.1)',
   primary600_20: 'rgba(220, 38, 38, 0.2)',
+  primary500_30: 'rgba(239, 68, 68, 0.3)',
 };
 
 export const spacing = {
-  xs: 2,
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  '2xl': 20,
-  '3xl': 24,
-  '4xl': 32,
-  '5xl': 40,
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  '2xl': 40,
+  '3xl': 48,
+  '4xl': 56,
+  '5xl': 64,
 };
 
 export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 20,
-  full: 999,
+  xl: 24,
+  '2xl': 32,
+  full: 9999,
 };
 
 export const fontSize = {
-  xs: 10,
-  sm: 12,
-  base: 14,
-  md: 16,
-  lg: 18,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 30,
-  '4xl': 36,
+  xs: 12,
+  sm: 14,
+  base: 16,
+  md: 18,
+  lg: 20,
+  xl: 24,
+  '2xl': 32,
+  '3xl': 40,
+  '4xl': 48,
 };

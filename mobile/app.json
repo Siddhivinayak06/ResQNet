@@ -57,7 +57,9 @@
           "icon": "./assets/icon.png",
           "color": "#ef4444"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

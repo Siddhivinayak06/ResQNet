@@ -9,12 +9,14 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError } from '../../services/api';
-import { colors, radius } from '../../theme/colors';
+import { colors, radius, spacing } from '../../theme/colors';
+import { typography, shared } from '../../theme/styles';
 
 type Props = NativeStackScreenProps<any, 'Register'>;
 
@@ -23,6 +25,29 @@ const ROLES = [
   { value: 'volunteer', emoji: '🚑', label: 'Volunteer' },
   { value: 'admin', emoji: '⚙️', label: 'Admin' },
 ];
+
+const FadeInView = ({ children, delay = 0, style, down = false }: any) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [down ? -20 : 20, 0],
+  });
+
+  return (
+    <Animated.View style={[style, { opacity: anim, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+};
 
 export default function RegisterScreen({ navigation }: Props) {
   const { register } = useAuth();
@@ -66,181 +91,198 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.flex}>
+    <SafeAreaView style={shared.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
+        style={{ flex: 1 }}
       >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        style={styles.bg}
-      >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join the rescue network</Text>
-          </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            {/* Header */}
+            <FadeInView down delay={0} style={styles.header}>
+              <Text style={typography.h1}>Create Account</Text>
+              <Text style={styles.subtitle}>Join the rescue network today</Text>
+            </FadeInView>
 
-          {/* Error */}
-          {error !== '' && (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+            {/* Error */}
+            {error !== '' && (
+              <View style={shared.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
 
-          {/* Form */}
-          <View style={styles.card}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="John Doe"
-              placeholderTextColor={colors.dark600}
-              value={name}
-              onChangeText={(t) => { setName(t); clearError(); }}
-              returnKeyType="next"
-              onSubmitEditing={() => emailRef.current?.focus()}
-              editable={!loading}
-            />
+            {/* Form */}
+            <FadeInView delay={200} style={shared.cardGlass}>
+              <Text style={typography.label}>Full Name</Text>
+              <TextInput
+                style={shared.input}
+                placeholder="John Doe"
+                placeholderTextColor={colors.dark600}
+                value={name}
+                onChangeText={(t) => { setName(t); clearError(); }}
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                editable={!loading}
+              />
 
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              ref={emailRef}
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.dark600}
-              value={email}
-              onChangeText={(t) => { setEmail(t); clearError(); }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              editable={!loading}
-            />
+              <Text style={typography.label}>Email Address</Text>
+              <TextInput
+                ref={emailRef}
+                style={shared.input}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.dark600}
+                value={email}
+                onChangeText={(t) => { setEmail(t); clearError(); }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                editable={!loading}
+              />
 
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              ref={passwordRef}
-              style={styles.input}
-              placeholder="Min. 6 characters"
-              placeholderTextColor={colors.dark600}
-              value={password}
-              onChangeText={(t) => { setPassword(t); clearError(); }}
-              secureTextEntry
-              returnKeyType="next"
-              onSubmitEditing={() => confirmRef.current?.focus()}
-              editable={!loading}
-            />
+              <Text style={typography.label}>Password</Text>
+              <TextInput
+                ref={passwordRef}
+                style={shared.input}
+                placeholder="Min. 6 characters"
+                placeholderTextColor={colors.dark600}
+                value={password}
+                onChangeText={(t) => { setPassword(t); clearError(); }}
+                secureTextEntry
+                returnKeyType="next"
+                onSubmitEditing={() => confirmRef.current?.focus()}
+                editable={!loading}
+              />
 
-            <Text style={styles.label}>Confirm Password</Text>
-            <TextInput
-              ref={confirmRef}
-              style={styles.input}
-              placeholder="Re-enter password"
-              placeholderTextColor={colors.dark600}
-              value={confirmPassword}
-              onChangeText={(t) => { setConfirmPassword(t); clearError(); }}
-              secureTextEntry
-              returnKeyType="done"
-              editable={!loading}
-            />
+              <Text style={typography.label}>Confirm Password</Text>
+              <TextInput
+                ref={confirmRef}
+                style={shared.input}
+                placeholder="Re-enter password"
+                placeholderTextColor={colors.dark600}
+                value={confirmPassword}
+                onChangeText={(t) => { setConfirmPassword(t); clearError(); }}
+                secureTextEntry
+                returnKeyType="done"
+                editable={!loading}
+              />
 
-            {/* Role Picker */}
-            <Text style={[styles.label, { marginBottom: 12 }]}>Role</Text>
-            <View style={styles.roleRow}>
-              {ROLES.map((r) => {
-                const selected = role === r.value;
-                return (
-                  <TouchableOpacity
-                    key={r.value}
-                    onPress={() => { setRole(r.value); clearError(); }}
-                    disabled={loading}
-                    style={[
-                      styles.roleBtn,
-                      selected && styles.roleBtnSelected,
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ fontSize: 18, marginBottom: 2 }}>{r.emoji}</Text>
-                    <Text style={[styles.roleLabel, selected && styles.roleLabelSelected]}>
-                      {r.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+              {/* Role Picker */}
+              <Text style={typography.label}>Select your role</Text>
+              <View style={styles.roleRow}>
+                {ROLES.map((r) => {
+                  const selected = role === r.value;
+                  return (
+                    <TouchableOpacity
+                      key={r.value}
+                      onPress={() => { setRole(r.value); clearError(); }}
+                      disabled={loading}
+                      style={[
+                        styles.roleBtn,
+                        selected && styles.roleBtnSelected,
+                      ]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ fontSize: 20, marginBottom: 4 }}>{r.emoji}</Text>
+                      <Text style={[styles.roleLabel, selected && styles.roleLabelSelected]}>
+                        {r.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-            <TouchableOpacity
-              onPress={handleRegister}
-              disabled={loading}
-              style={[styles.button, loading && styles.buttonDisabled]}
-              activeOpacity={0.8}
-            >
-              {loading && <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />}
-              <Text style={styles.buttonText}>
-                {loading ? 'Creating Account...' : 'Create Account'}
+              <TouchableOpacity
+                onPress={handleRegister}
+                disabled={loading}
+                style={[shared.buttonPrimary, { marginTop: spacing.md }, loading && shared.buttonDisabled]}
+                activeOpacity={0.8}
+              >
+                {loading && <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />}
+                <Text style={shared.buttonPrimaryText}>
+                  {loading ? 'Creating Account...' : 'Create Account'}
+                </Text>
+              </TouchableOpacity>
+            </FadeInView>
+
+            <FadeInView delay={400} style={styles.linkRow}>
+              <Text style={typography.bodySmall}>
+                Already have an account?{' '}
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading}>
+                <Text style={styles.linkBold}>Sign In</Text>
+              </TouchableOpacity>
+            </FadeInView>
           </View>
-
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkRow} disabled={loading}>
-            <Text style={styles.linkText}>
-              Already have an account?{' '}
-              <Text style={styles.linkBold}>Sign In</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  bg: { backgroundColor: colors.dark950 },
-  scrollContent: { flexGrow: 1, justifyContent: 'center' },
-  container: { paddingHorizontal: 32, paddingVertical: 32 },
-
-  header: { alignItems: 'center', marginBottom: 24 },
-  title: { color: colors.white, fontSize: 30, fontWeight: 'bold' },
-  subtitle: { color: colors.dark400, fontSize: 14, marginTop: 4 },
-
-  errorBanner: {
-    backgroundColor: colors.red900_30, borderWidth: 1, borderColor: colors.red700_50,
-    borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 16,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
   },
-  errorText: { color: colors.primary300, fontSize: 14, textAlign: 'center' },
-
-  card: {
-    backgroundColor: colors.dark900, borderWidth: 1, borderColor: colors.dark700,
-    borderRadius: radius.xl, padding: 24,
+  container: {
+    paddingHorizontal: spacing.lg,
   },
-  label: { color: colors.dark300, fontSize: 14, marginBottom: 8 },
-  input: {
-    backgroundColor: colors.dark800, borderWidth: 1, borderColor: colors.dark600,
-    borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 14,
-    color: colors.white, fontSize: 16, marginBottom: 16,
+  header: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
   },
-
-  roleRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
+  subtitle: {
+    color: colors.dark400,
+    fontSize: 14,
+    marginTop: spacing.xs,
+  },
+  errorText: {
+    color: colors.primary300,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  roleRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
   roleBtn: {
-    flex: 1, paddingVertical: 12, borderRadius: radius.md, alignItems: 'center',
-    borderWidth: 1, borderColor: colors.dark600, backgroundColor: colors.dark800,
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.dark700,
+    backgroundColor: colors.dark900,
   },
-  roleBtnSelected: { backgroundColor: colors.primary600, borderColor: colors.primary500 },
-  roleLabel: { fontSize: 11, fontWeight: '600', color: colors.dark400 },
-  roleLabelSelected: { color: colors.white },
-
-  button: {
-    backgroundColor: colors.primary600, borderRadius: radius.md, paddingVertical: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8,
+  roleBtnSelected: {
+    backgroundColor: colors.primary500,
+    borderColor: colors.primary400,
   },
-  buttonDisabled: { backgroundColor: colors.primary800 },
-  buttonText: { color: colors.white, fontWeight: 'bold', fontSize: 16 },
-
-  linkRow: { marginTop: 24, alignItems: 'center' },
-  linkText: { color: colors.dark400, fontSize: 14 },
-  linkBold: { color: colors.primary400, fontWeight: '600' },
+  roleLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.dark400,
+  },
+  roleLabelSelected: {
+    color: colors.white,
+  },
+  linkRow: {
+    marginTop: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  linkBold: {
+    color: colors.primary500,
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });

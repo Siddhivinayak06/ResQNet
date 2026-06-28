@@ -51,9 +51,9 @@ export default function DashboardPage() {
 
     try {
       const [reportsRes, respondersRes, hospitalsRes] = await Promise.all([
-        apiFetch('/api/reports', { token }),
-        apiFetch('/api/responders', { token }),
-        apiFetch('/api/hospitals', { token }),
+        apiFetch('/incidents', { token }),
+        apiFetch('/volunteers', { token }), // Or /responders if implemented, but /volunteers matches the backend plan
+        apiFetch('/hospitals', { token }),
       ]);
 
       if (reportsRes.ok) {
@@ -95,14 +95,12 @@ export default function DashboardPage() {
       fetchData();
     };
 
-    socket.on('report:created', onRealtimeUpdate);
-    socket.on('report:updated', onRealtimeUpdate);
-    socket.on('responder:updated', onRealtimeUpdate);
+    socket.on('newIncident', onRealtimeUpdate);
+    socket.on('incidentUpdated', onRealtimeUpdate);
 
     return () => {
-      socket.off('report:created', onRealtimeUpdate);
-      socket.off('report:updated', onRealtimeUpdate);
-      socket.off('responder:updated', onRealtimeUpdate);
+      socket.off('newIncident', onRealtimeUpdate);
+      socket.off('incidentUpdated', onRealtimeUpdate);
       disconnectSocketClient();
     };
   }, [token, user, fetchData]);
@@ -114,8 +112,8 @@ export default function DashboardPage() {
       }
 
       try {
-        const assignResponse = await apiFetch(`/api/reports/${reportId}/assign`, {
-          method: 'PATCH',
+        const assignResponse = await apiFetch(`/incidents/${reportId}/assign`, {
+          method: 'POST',
           body: JSON.stringify({}),
           token,
         });
@@ -125,9 +123,9 @@ export default function DashboardPage() {
           throw new Error(assignError.error || 'Failed to accept report');
         }
 
-        const statusResponse = await apiFetch(`/api/reports/${reportId}/status`, {
+        const statusResponse = await apiFetch(`/incidents/${reportId}/status`, {
           method: 'PATCH',
-          body: JSON.stringify({ status: 'in-progress' }),
+          body: JSON.stringify({ status: 'active' }),
           token,
         });
 
@@ -156,7 +154,7 @@ export default function DashboardPage() {
 
   const getDashboardTitle = () => {
     switch (user.role) {
-      case 'user':
+      case 'citizen':
         return 'My Emergency Reports';
       case 'volunteer':
         return 'Active Emergencies';
@@ -169,7 +167,7 @@ export default function DashboardPage() {
 
   const renderDashboard = () => {
     switch (user.role) {
-      case 'user':
+      case 'citizen':
         return <CitizenDashboard reports={reports} loading={loading} />;
       case 'volunteer':
         return (

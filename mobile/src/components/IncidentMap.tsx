@@ -1,17 +1,19 @@
-import React, { useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useRef, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated, Easing } from 'react-native';
 import MapView, { Marker, Callout, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Incident } from '../services/incidentService';
-import { colors, radius } from '../theme/colors';
+import { colors, radius, spacing } from '../theme/colors';
+import { shared, typography } from '../theme/styles';
 import { formatDate } from '../utils/helpers';
 
-// ─── Marker Colors by Type ──────────────────────────────────
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 const MARKER_COLORS: Record<string, string> = {
-  medical: '#3b82f6',   // Blue
-  fire: '#ef4444',       // Red
-  accident: '#f59e0b',   // Orange
-  crime: '#8b5cf6',      // Purple
-  disaster: '#eab308',   // Yellow
+  medical: colors.info,
+  fire: colors.danger,
+  accident: colors.warning,
+  crime: colors.purple,
+  disaster: colors.danger,
 };
 
 const MARKER_EMOJI: Record<string, string> = {
@@ -36,6 +38,27 @@ export default function IncidentMap({
   style,
 }: IncidentMapProps) {
   const mapRef = useRef<MapView>(null);
+  const dotOpacity = useRef(new Animated.Value(1)).current;
+  const btnScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(dotOpacity, {
+          toValue: 0.2,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(dotOpacity, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   const initialRegion: Region = {
     latitude: userLocation?.latitude ?? 19.076,
@@ -46,14 +69,7 @@ export default function IncidentMap({
 
   const centerOnUser = useCallback(() => {
     if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          ...userLocation,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        },
-        600
-      );
+      mapRef.current.animateToRegion({ ...userLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }, 800);
     }
   }, [userLocation]);
 
@@ -67,33 +83,26 @@ export default function IncidentMap({
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass={false}
-        customMapStyle={darkMapStyle}
+        customMapStyle={uberDarkMapStyle}
       >
         {incidents.map((incident) => {
           const color = MARKER_COLORS[incident.incidentType] || colors.dark400;
           return (
             <Marker
               key={incident._id}
-              coordinate={{
-                latitude: incident.latitude,
-                longitude: incident.longitude,
-              }}
+              coordinate={{ latitude: incident.latitude, longitude: incident.longitude }}
               pinColor={color}
               onPress={() => onMarkerPress?.(incident)}
+              tracksViewChanges={false}
             >
               <Callout tooltip>
                 <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>
+                  <Text style={typography.h4}>
                     {MARKER_EMOJI[incident.incidentType] || '📍'}{' '}
-                    {incident.incidentType.charAt(0).toUpperCase() +
-                      incident.incidentType.slice(1)}
+                    {incident.incidentType.charAt(0).toUpperCase() + incident.incidentType.slice(1)}
                   </Text>
-                  <Text style={styles.calloutDesc} numberOfLines={2}>
-                    {incident.description}
-                  </Text>
-                  <Text style={styles.calloutTime}>
-                    {formatDate(incident.reportedAt)}
-                  </Text>
+                  <Text style={styles.calloutDesc} numberOfLines={2}>{incident.description}</Text>
+                  <Text style={styles.calloutTime}>{formatDate(incident.reportedAt)}</Text>
                 </View>
               </Callout>
             </Marker>
@@ -101,108 +110,69 @@ export default function IncidentMap({
         })}
       </MapView>
 
-      {/* Zoom to user button */}
-      <TouchableOpacity style={styles.locateBtn} onPress={centerOnUser} activeOpacity={0.8}>
+      <AnimatedPressable
+        style={[styles.locateBtn, { transform: [{ scale: btnScale }] }]}
+        onPress={centerOnUser}
+        onPressIn={() => {
+          Animated.spring(btnScale, {
+            toValue: 0.9,
+            useNativeDriver: true,
+          }).start();
+        }}
+        onPressOut={() => {
+          Animated.spring(btnScale, {
+            toValue: 1,
+            useNativeDriver: true,
+          }).start();
+        }}
+      >
         <Text style={{ fontSize: 20 }}>📍</Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
 
-      {/* Live indicator */}
       <View style={styles.liveTag}>
-        <View style={styles.liveDot} />
-        <Text style={styles.liveText}>LIVE</Text>
+        <Animated.View style={[styles.liveDot, { opacity: dotOpacity }]} />
+        <Text style={styles.liveText}>LIVE TRACKING</Text>
       </View>
     </View>
   );
 }
 
-// ─── Dark map style ──────────────────────────────────────────
-const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a3646' }] },
-  { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#0e1626' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#304a7d' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#255763' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#283d6a' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
+const uberDarkMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#020617' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
+  { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#0f172a' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#334155' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
 ];
 
 const styles = StyleSheet.create({
-  container: {
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    backgroundColor: colors.dark800,
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
+  container: { borderRadius: radius.xl, overflow: 'hidden', backgroundColor: colors.dark950 },
+  map: { width: '100%', height: '100%' },
   callout: {
-    backgroundColor: colors.dark900,
-    borderRadius: radius.md,
-    padding: 12,
-    maxWidth: 220,
-    borderWidth: 1,
-    borderColor: colors.dark700,
+    ...shared.cardGlass,
+    padding: spacing.md,
+    maxWidth: 240,
+    minWidth: 180,
   },
-  calloutTitle: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  calloutDesc: {
-    color: colors.dark300,
-    fontSize: 12,
-    marginBottom: 4,
-    lineHeight: 16,
-  },
-  calloutTime: {
-    color: colors.dark500,
-    fontSize: 10,
-  },
+  calloutDesc: { ...typography.bodySmall, marginVertical: spacing.xs },
+  calloutTime: { color: colors.dark500, fontSize: 10, fontWeight: '600' },
   locateBtn: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.dark900,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.dark700,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    position: 'absolute', bottom: spacing.md, right: spacing.md,
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: colors.glassCard,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.glassLight,
   },
   liveTag: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.dark700,
+    position: 'absolute', top: spacing.md, left: spacing.md,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.glassDark,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.glassLight,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.success,
-    marginRight: 6,
-  },
-  liveText: {
-    color: colors.success,
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary500, marginRight: 8, ...shared.glowRed },
+  liveText: { color: colors.white, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
 });

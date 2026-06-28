@@ -5,14 +5,16 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  Pressable,
   Alert,
   StyleSheet,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
-import { incidentService, Incident } from '../../services/incidentService';
+import { incidentService, Incident, mapIncident } from '../../services/incidentService';
 import { ApiError } from '../../services/api';
 import { socketService, SocketIncidentPayload } from '../../services/socket';
 import { getCurrentLocation, LocationData } from '../../utils/location';
@@ -22,35 +24,75 @@ import IncidentCard from '../../components/IncidentCard';
 import IncidentMap from '../../components/IncidentMap';
 import IncidentDetailModal from '../../components/IncidentDetailModal';
 import SOSButton from '../../components/SOSButton';
-import { colors, radius } from '../../theme/colors';
+import { colors, radius, spacing } from '../../theme/colors';
+import { typography, shared } from '../../theme/styles';
 
 type Props = NativeStackScreenProps<any, 'Home'>;
 
 const MAP_HEIGHT = Dimensions.get('window').height * 0.32;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// ─── Skeleton ────────────────────────────────────────────────
+const FadeInView = ({ children, delay = 0, style, down = false }: any) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [down ? -20 : 20, 0],
+  });
+
+  return (
+    <Animated.View style={[style, { opacity: anim, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+};
+
+// ─── Quick Action Card Component ───
+const QuickActionCard = ({ emoji, label, onPress, delay }: { emoji: string; label: string; onPress: () => void; delay: number }) => {
+  const scale = React.useRef(new Animated.Value(1)).current;
+  
+  return (
+    <FadeInView delay={delay} style={{ flex: 1 }}>
+      <AnimatedPressable
+        onPress={onPress}
+        onPressIn={() => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start()}
+        onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start()}
+        style={[styles.quickCard, { transform: [{ scale }] }]}
+      >
+        <Text style={{ fontSize: 24, marginBottom: spacing.xs }}>{emoji}</Text>
+        <Text style={styles.quickLabel}>{label}</Text>
+      </AnimatedPressable>
+    </FadeInView>
+  );
+};
+
+// ─── Skeleton ───
 function SkeletonCard() {
   return (
-    <View style={skStyles.card}>
+    <FadeInView delay={0} style={skStyles.card}>
       <View style={skStyles.row}>
         <View style={[skStyles.bar, { width: 112 }]} />
-        <View style={[skStyles.bar, { width: 64, borderRadius: 999 }]} />
+        <View style={[skStyles.bar, { width: 64, borderRadius: radius.full }]} />
       </View>
-      <View style={[skStyles.bar, { width: '100%', marginBottom: 8 }]} />
+      <View style={[skStyles.bar, { width: '100%', marginBottom: spacing.sm }]} />
       <View style={[skStyles.bar, { width: '75%' }]} />
-    </View>
+    </FadeInView>
   );
 }
 const skStyles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.dark800, borderWidth: 1, borderColor: colors.dark700,
-    borderRadius: 16, padding: 16, marginBottom: 12,
-  },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  bar: { backgroundColor: colors.dark700, height: 12, borderRadius: 8 },
+  card: { ...shared.cardGlass, marginBottom: spacing.md },
+  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
+  bar: { backgroundColor: colors.dark800, height: 12, borderRadius: radius.sm },
 });
 
-// ─── Screen ──────────────────────────────────────────────────
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -62,86 +104,50 @@ export default function HomeScreen({ navigation }: Props) {
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [showMap, setShowMap] = useState(true);
 
-  // ── Fetch incidents ──
   const fetchIncidents = useCallback(async () => {
     try {
       setError(null);
       const data = await incidentService.getIncidents();
       setIncidents(data);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.code === 'NETWORK_ERROR' ? 'Cannot reach server.' : err.message);
-      } else {
-        setError('Failed to load incidents.');
-      }
+      if (err instanceof ApiError) setError(err.code === 'NETWORK_ERROR' ? 'Cannot reach server.' : err.message);
+      else setError('Failed to load incidents.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  // ── Get user location ──
   useEffect(() => {
-    getCurrentLocation()
-      .then(setUserLocation)
-      .catch(() => {}); // Permission denied — map will use defaults
+    getCurrentLocation().then(setUserLocation).catch(() => {});
   }, []);
 
-  // ── Initial fetch + offline sync ──
   useEffect(() => {
     fetchIncidents();
     syncQueuedReports().then((r) => setQueueCount(r.remaining));
     getQueuedReports().then((q) => setQueueCount(q.length));
-    // Register push notifications
     notificationService.register().then((state) => {
       if (state.token) notificationService.sendTokenToBackend(state.token);
     });
   }, [fetchIncidents]);
 
-  // ── Socket.io real-time updates ──
   useEffect(() => {
     socketService.connect();
-
     const unsubNew = socketService.onNewIncident((data: SocketIncidentPayload) => {
-      // Add new incident to the top of the list
-      const newIncident: Incident = {
-        _id: data.incidentId,
-        incidentType: data.incidentType as Incident['incidentType'],
-        description: data.description,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        status: 'pending',
-        reportedAt: data.timestamp || new Date().toISOString(),
-      };
-      setIncidents((prev) => {
-        // Avoid duplicates
-        if (prev.find((i) => i._id === newIncident._id)) return prev;
-        return [newIncident, ...prev];
-      });
+      const newIncident = mapIncident(data);
+      setIncidents((prev) => (prev.find((i) => i._id === newIncident._id) ? prev : [newIncident, ...prev]));
     });
 
     const unsubUpdated = socketService.onIncidentUpdated((data: SocketIncidentPayload) => {
+      const updatedIncident = mapIncident(data);
       setIncidents((prev) =>
-        prev.map((i) =>
-          i._id === data.incidentId
-            ? {
-                ...i,
-                status: (data.status as Incident['status']) || i.status,
-                description: data.description || i.description,
-              }
-            : i
-        )
+        prev.map((i) => (i._id === updatedIncident._id ? { ...i, ...updatedIncident } : i))
       );
     });
 
-    return () => {
-      unsubNew();
-      unsubUpdated();
-      socketService.disconnect();
-    };
+    return () => { unsubNew(); unsubUpdated(); socketService.disconnect(); };
   }, []);
 
-  // ── Auto-refresh every 30s ──
   useEffect(() => {
     const interval = setInterval(fetchIncidents, 30000);
     return () => clearInterval(interval);
@@ -159,113 +165,74 @@ export default function HomeScreen({ navigation }: Props) {
   const pendingCount = incidents.filter((i) => i.status === 'pending').length;
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerSection}>
+    <SafeAreaView style={shared.screen}>
+      <FadeInView down delay={0} style={styles.headerSection}>
         <View>
-          <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          <Text style={typography.caption}>Welcome back,</Text>
+          <Text style={typography.h2}>{user?.name || 'User'}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.mapToggle}
-          onPress={() => setShowMap(!showMap)}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.mapToggle} onPress={() => setShowMap(!showMap)} activeOpacity={0.7}>
           <Text style={{ fontSize: 16 }}>{showMap ? '📋' : '🗺️'}</Text>
           <Text style={styles.mapToggleText}>{showMap ? 'List' : 'Map'}</Text>
         </TouchableOpacity>
-      </View>
+      </FadeInView>
 
-      {/* Map */}
-      {showMap && (
-        <View style={styles.mapContainer}>
-          <IncidentMap
-            incidents={incidents}
-            userLocation={userLocation}
-            onMarkerPress={setSelectedIncident}
-          />
-        </View>
-      )}
+      <FadeInView delay={100}>
+        {showMap && (
+          <View style={styles.mapContainer}>
+            <IncidentMap incidents={incidents} userLocation={userLocation} onMarkerPress={setSelectedIncident} />
+          </View>
+        )}
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: 'rgba(127,29,29,0.2)', borderColor: 'rgba(185,28,28,0.3)' }]}>
-          <Text style={[styles.statLabel, { color: colors.primary400 }]}>Active</Text>
-          <Text style={styles.statValue}>{activeCount}</Text>
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, { backgroundColor: colors.red900_30, borderColor: colors.red700_50 }]}>
+            <Text style={[styles.statLabel, { color: colors.primary400 }]}>Active</Text>
+            <Text style={styles.statValue}>{activeCount}</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.amber900_30, borderColor: colors.amber700_40 }]}>
+            <Text style={[styles.statLabel, { color: colors.warning }]}>Pending</Text>
+            <Text style={styles.statValue}>{pendingCount}</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.blue900_20, borderColor: 'rgba(30,64,175,0.3)' }]}>
+            <Text style={[styles.statLabel, { color: colors.info }]}>Total</Text>
+            <Text style={styles.statValue}>{incidents.length}</Text>
+          </View>
         </View>
-        <View style={[styles.statCard, { backgroundColor: colors.amber900_30, borderColor: colors.amber700_40 }]}>
-          <Text style={[styles.statLabel, { color: colors.warning }]}>Pending</Text>
-          <Text style={styles.statValue}>{pendingCount}</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: colors.blue900_20, borderColor: 'rgba(30,64,175,0.3)' }]}>
-          <Text style={[styles.statLabel, { color: colors.info }]}>Total</Text>
-          <Text style={styles.statValue}>{incidents.length}</Text>
-        </View>
-      </View>
+      </FadeInView>
 
-      {/* Quick Actions */}
       <View style={styles.quickRow}>
-        <TouchableOpacity
-          style={styles.quickCard}
-          onPress={() => navigation.navigate('RequestHelp')}
-          activeOpacity={0.7}
-        >
-          <Text style={{ fontSize: 22 }}>🚨</Text>
-          <Text style={styles.quickLabel}>Report</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.quickCard}
-          onPress={() => navigation.navigate('FirstAid')}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Open First Aid Guide"
-        >
-          <Text style={{ fontSize: 22 }}>🏥</Text>
-          <Text style={styles.quickLabel}>First Aid</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.quickCard}
-          onPress={() => navigation.navigate('EmergencyContacts')}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Open Emergency Contacts"
-        >
-          <Text style={{ fontSize: 22 }}>📞</Text>
-          <Text style={styles.quickLabel}>Contacts</Text>
-        </TouchableOpacity>
+        <QuickActionCard emoji="🚨" label="Report" onPress={() => navigation.navigate('RequestHelp')} delay={200} />
+        <QuickActionCard emoji="🏥" label="First Aid" onPress={() => navigation.navigate('FirstAid')} delay={250} />
+        <QuickActionCard emoji="📞" label="Contacts" onPress={() => navigation.navigate('EmergencyContacts')} delay={300} />
       </View>
 
-      {/* Queue Banner */}
       {queueCount > 0 && (
-        <View style={styles.queueBanner}>
+        <FadeInView delay={350} style={styles.queueBanner}>
           <Text style={styles.queueText}>📡 {queueCount} report{queueCount > 1 ? 's' : ''} pending sync</Text>
           <TouchableOpacity onPress={onRefresh} style={styles.queueBtn}>
             <Text style={styles.queueBtnText}>Sync Now</Text>
           </TouchableOpacity>
-        </View>
+        </FadeInView>
       )}
 
-      {/* Section Header */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Incidents</Text>
+      <FadeInView delay={400} style={styles.sectionHeader}>
+        <Text style={typography.sectionTitle}>Recent Incidents</Text>
         <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
           <Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
         </TouchableOpacity>
-      </View>
+      </FadeInView>
 
-      {/* Error */}
       {error && (
-        <View style={styles.errorBanner}>
+        <FadeInView delay={0} style={shared.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={onRefresh} style={{ marginTop: 8, alignItems: 'center' }}>
+          <TouchableOpacity onPress={onRefresh} style={{ marginTop: spacing.sm, alignItems: 'center' }}>
             <Text style={styles.retryText}>Tap to retry</Text>
           </TouchableOpacity>
-        </View>
+        </FadeInView>
       )}
 
-      {/* Incident List */}
       {loading ? (
-        <View style={{ paddingHorizontal: 24 }}>
+        <View style={{ paddingHorizontal: spacing.lg }}>
           <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />
@@ -274,106 +241,96 @@ export default function HomeScreen({ navigation }: Props) {
         <FlatList
           data={incidents}
           keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <IncidentCard
-              incident={item}
-              onPress={() => setSelectedIncident(item)}
-            />
+          renderItem={({ item, index }) => (
+            <FadeInView delay={450 + index * 50}>
+              <IncidentCard incident={item} onPress={() => setSelectedIncident(item)} />
+            </FadeInView>
           )}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary500} colors={[colors.primary500]} />
-          }
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 120 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary500} />}
           ListEmptyComponent={
             !error ? (
-              <View style={styles.emptySection}>
-                <Text style={{ fontSize: 36, marginBottom: 12 }}>🎉</Text>
-                <Text style={styles.emptyTitle}>No incidents reported</Text>
-                <Text style={styles.emptyHint}>Pull down to refresh</Text>
-              </View>
+              <FadeInView delay={450} style={styles.emptySection}>
+                <Text style={{ fontSize: 40, marginBottom: spacing.md }}>🎉</Text>
+                <Text style={typography.h3}>No incidents reported</Text>
+                <Text style={typography.caption}>Pull down to refresh</Text>
+              </FadeInView>
             ) : null
           }
         />
       )}
 
-      {/* Detail Modal */}
-      <IncidentDetailModal
-        visible={selectedIncident !== null}
-        incident={selectedIncident}
-        userLocation={userLocation}
-        onClose={() => setSelectedIncident(null)}
-      />
+      <IncidentDetailModal visible={selectedIncident !== null} incident={selectedIncident} userLocation={userLocation} onClose={() => setSelectedIncident(null)} />
 
-      {/* Floating SOS */}
       <View style={styles.floatingSOS}>
-        <SOSButton size={70} />
+        <SOSButton size={72} />
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark950 },
-
   headerSection: {
-    paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  greeting: { color: colors.dark400, fontSize: 14 },
-  userName: { color: colors.white, fontSize: 24, fontWeight: 'bold' },
   mapToggle: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.dark800, paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.dark700,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.dark900,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.dark800,
   },
-  mapToggleText: { color: colors.dark300, fontSize: 12, fontWeight: '600', marginLeft: 6 },
-
+  mapToggleText: { color: colors.white, fontSize: 13, fontWeight: '600', marginLeft: spacing.xs },
+  
   mapContainer: {
-    marginHorizontal: 24, marginBottom: 12,
-    height: MAP_HEIGHT, borderRadius: radius.xl,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    height: MAP_HEIGHT,
+    borderRadius: radius.xl,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.dark800,
   },
 
-  statsRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 12, marginBottom: 8 },
-  statCard: { flex: 1, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
-  statLabel: { fontSize: 11, fontWeight: '600' },
-  statValue: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
+  statsRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md },
+  statCard: { flex: 1, borderWidth: 1, borderRadius: radius.lg, padding: spacing.sm, alignItems: 'center' },
+  statLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statValue: { color: colors.white, fontSize: 22, fontWeight: '900', marginTop: spacing.xs },
 
-  quickRow: {
-    flexDirection: 'row', paddingHorizontal: 24, gap: 10, marginBottom: 8,
-  },
+  quickRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.lg },
   quickCard: {
-    flex: 1, backgroundColor: colors.dark900, borderWidth: 1, borderColor: colors.dark700,
-    borderRadius: radius.md, paddingVertical: 14, alignItems: 'center',
+    ...shared.cardGlass,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    borderRadius: radius.xl,
   },
-  quickLabel: { color: colors.dark300, fontSize: 11, fontWeight: '600', marginTop: 4 },
+  quickLabel: { color: colors.white, fontSize: 12, fontWeight: '600' },
 
-  floatingSOS: {
-    position: 'absolute', bottom: 20, alignSelf: 'center',
-  },
+  floatingSOS: { position: 'absolute', bottom: 24, alignSelf: 'center' },
 
   queueBanner: {
-    marginHorizontal: 24, marginBottom: 8,
+    marginHorizontal: spacing.lg, marginBottom: spacing.md,
     backgroundColor: colors.amber900_30, borderWidth: 1, borderColor: colors.amber700_40,
-    borderRadius: radius.md, padding: 12, flexDirection: 'row', alignItems: 'center',
+    borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center',
   },
-  queueText: { color: '#fcd34d', fontSize: 13, flex: 1 },
-  queueBtn: { backgroundColor: colors.amber700_40, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  queueBtnText: { color: '#fef3c7', fontSize: 11, fontWeight: '600' },
+  queueText: { color: colors.warning, fontSize: 13, flex: 1, fontWeight: '500' },
+  queueBtn: { backgroundColor: colors.warning, paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.full },
+  queueBtnText: { color: colors.white, fontSize: 12, fontWeight: '700' },
 
-  sectionHeader: { paddingHorizontal: 24, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  sectionTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
-  refreshText: { color: colors.primary400, fontSize: 14 },
+  sectionHeader: { paddingHorizontal: spacing.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  refreshText: { color: colors.primary400, fontSize: 14, fontWeight: '600' },
 
-  errorBanner: {
-    marginHorizontal: 24, marginBottom: 8,
-    backgroundColor: colors.red900_30, borderWidth: 1, borderColor: colors.red700_50,
-    borderRadius: radius.md, padding: 12,
-  },
   errorText: { color: colors.primary300, fontSize: 13, textAlign: 'center' },
-  retryText: { color: colors.primary400, fontSize: 11, fontWeight: '600' },
+  retryText: { color: colors.primary400, fontSize: 12, fontWeight: '700' },
 
-  emptySection: { alignItems: 'center', paddingVertical: 48 },
-  emptyTitle: { color: colors.dark400, fontSize: 16, fontWeight: '600' },
-  emptyHint: { color: colors.dark600, fontSize: 13, marginTop: 4 },
+  emptySection: { alignItems: 'center', paddingVertical: spacing['4xl'] },
 });

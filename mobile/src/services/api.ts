@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 // ─── Types ───────────────────────────────────────────────────
 export interface ApiErrorResponse {
@@ -21,10 +21,8 @@ export class ApiError extends Error {
 }
 
 // ─── Base URL ────────────────────────────────────────────────
-// Priority: env var > fallback
-// Android emulator: 10.0.2.2 | Physical device: your LAN IP
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'https://resqnet-jos9.onrender.com';
+  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:5001/api/v1';
 
 // ─── Axios Instance ──────────────────────────────────────────
 const api = axios.create({
@@ -40,12 +38,12 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await SecureStore.getItemAsync('auth_token');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch {
-      // AsyncStorage read failed — continue without token
+      // SecureStore read failed — continue without token
     }
     return config;
   },
@@ -55,7 +53,6 @@ api.interceptors.request.use(
 // ─── Response Interceptor — normalize errors ─────────────────
 let logoutCallback: (() => void) | null = null;
 
-/** Called by AuthContext to wire up auto-logout on 401 */
 export function setLogoutCallback(cb: () => void) {
   logoutCallback = cb;
 }
@@ -63,7 +60,6 @@ export function setLogoutCallback(cb: () => void) {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiErrorResponse>) => {
-    // Network / timeout error
     if (!error.response) {
       throw new ApiError(
         'Network error. Please check your connection.',
@@ -76,7 +72,8 @@ api.interceptors.response.use(
 
     // Unauthorized — auto-logout
     if (status === 401) {
-      await AsyncStorage.multiRemove(['auth_token', 'auth_user']);
+      await SecureStore.deleteItemAsync('auth_token');
+      await SecureStore.deleteItemAsync('auth_user');
       logoutCallback?.();
       throw new ApiError(
         data?.error || 'Session expired. Please login again.',
@@ -85,12 +82,10 @@ api.interceptors.response.use(
       );
     }
 
-    // Validation errors (array)
     if (status === 400 && data?.errors?.length) {
       throw new ApiError(data.errors[0], 400, 'VALIDATION_ERROR');
     }
 
-    // Generic server error
     const message =
       data?.error || `Server error (${status}). Please try again.`;
     throw new ApiError(message, status, 'SERVER_ERROR');

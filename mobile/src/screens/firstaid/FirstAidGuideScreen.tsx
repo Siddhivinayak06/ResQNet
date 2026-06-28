@@ -4,11 +4,46 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  Animated,
 } from 'react-native';
-import { colors, radius } from '../../theme/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, radius, spacing } from '../../theme/colors';
+import { typography, shared } from '../../theme/styles';
 
-// ─── Offline First Aid Data ──────────────────────────────────
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
+const FadeInView = ({ children, delay = 0, style, down = false }: any) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [down ? -20 : 20, 0],
+  });
+
+  return (
+    <Animated.View style={[style, { opacity: anim, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+};
+
+// ─── Offline First Aid Data ───
 interface FirstAidTopic {
   id: string;
   emoji: string;
@@ -20,260 +55,107 @@ interface FirstAidTopic {
 }
 
 const FIRST_AID_DATA: FirstAidTopic[] = [
-  {
-    id: 'cpr',
-    emoji: '❤️',
-    title: 'CPR Instructions',
-    tagline: 'Cardiopulmonary Resuscitation',
-    color: '#ef4444',
-    steps: [
-      'Ensure the scene is safe before approaching the victim.',
-      'Check for responsiveness — tap shoulders and shout "Are you okay?"',
-      'Call emergency services or ask someone nearby to call.',
-      'Place the person on a firm, flat surface face-up.',
-      'Place the heel of one hand on the center of the chest (between the nipples).',
-      'Place your other hand on top, interlocking fingers.',
-      'Push hard and fast — at least 2 inches deep, at a rate of 100-120 compressions per minute.',
-      'After 30 compressions, tilt the head back, lift the chin, and give 2 rescue breaths.',
-      'Continue cycles of 30 compressions and 2 breaths until help arrives.',
-    ],
-    warning: 'Do NOT stop CPR until professional help arrives or the person begins breathing normally.',
-  },
-  {
-    id: 'bleeding',
-    emoji: '🩸',
-    title: 'Bleeding Control',
-    tagline: 'Severe Wound Management',
-    color: '#dc2626',
-    steps: [
-      'Put on gloves if available to protect yourself.',
-      'Apply firm, direct pressure to the wound with a clean cloth or bandage.',
-      'Do NOT remove the cloth if blood soaks through — add more layers on top.',
-      'If the wound is on a limb, elevate it above the heart if possible.',
-      'Apply a pressure bandage if available — wrap snugly but not so tight it cuts off circulation.',
-      'For life-threatening bleeding, apply a tourniquet 2-3 inches above the wound (limbs only).',
-      'Note the time the tourniquet was applied.',
-      'Keep the victim warm and calm. Do NOT give food or water.',
-      'Get professional medical help immediately.',
-    ],
-    warning: 'A tourniquet should only be used as a last resort for life-threatening limb bleeding.',
-  },
-  {
-    id: 'burns',
-    emoji: '🔥',
-    title: 'Burns Treatment',
-    tagline: 'Thermal and Chemical Burns',
-    color: '#f59e0b',
-    steps: [
-      'Remove the person from the source of the burn immediately.',
-      'Cool the burn under cool (not cold) running water for at least 10 minutes.',
-      'Do NOT apply ice, butter, toothpaste, or home remedies.',
-      'Remove clothing and jewelry near the burn (unless stuck to the skin).',
-      'Cover the burn loosely with a sterile, non-stick bandage or clean cloth.',
-      'For chemical burns, brush off dry chemicals, then rinse with water for 20+ minutes.',
-      'Do NOT pop blisters — they protect against infection.',
-      'Give over-the-counter pain medication if available.',
-      'Seek medical attention for burns larger than 3 inches or on the face, hands, feet, or joints.',
-    ],
-  },
-  {
-    id: 'fracture',
-    emoji: '🦴',
-    title: 'Fracture Handling',
-    tagline: 'Broken or Dislocated Bones',
-    color: '#3b82f6',
-    steps: [
-      'Keep the person still — do NOT move the injured area.',
-      'Call for emergency medical help.',
-      'Immobilize the injury — use a splint or padding to support the limb in its current position.',
-      'Do NOT try to realign a bone or push a protruding bone back in.',
-      'Apply ice packs wrapped in cloth to reduce swelling (20 min on, 20 min off).',
-      'If there is an open fracture (bone through skin), cover the wound with a sterile bandage.',
-      'Check circulation below the injury — pulse, skin color, sensation.',
-      'Treat for shock if needed — lay the person down, elevate legs, keep warm.',
-      'Monitor breathing and consciousness until help arrives.',
-    ],
-    warning: 'Never attempt to move someone with a suspected spinal injury.',
-  },
-  {
-    id: 'choking',
-    emoji: '🫁',
-    title: 'Choking Rescue',
-    tagline: 'Heimlich Maneuver',
-    color: '#8b5cf6',
-    steps: [
-      'Ask "Are you choking?" — if they cannot speak, cough, or breathe, act immediately.',
-      'Stand behind the person and wrap your arms around their waist.',
-      'Make a fist with one hand and place it just above the navel (belly button).',
-      'Grab your fist with the other hand.',
-      'Give quick, upward thrusts into the abdomen.',
-      'Repeat until the object is dislodged or the person can breathe.',
-      'For infants: place face-down on your forearm, give 5 back blows between shoulder blades, then flip and give 5 chest thrusts.',
-      'If the person becomes unconscious, begin CPR and check the mouth for the object before each breath.',
-      'Call emergency services immediately.',
-    ],
-  },
-  {
-    id: 'heatstroke',
-    emoji: '☀️',
-    title: 'Heat Stroke',
-    tagline: 'Overheating Emergency',
-    color: '#ea580c',
-    steps: [
-      'Move the person to a cool, shaded area immediately.',
-      'Call emergency services — heat stroke is life-threatening.',
-      'Remove excess clothing.',
-      'Cool the person rapidly: apply cold water or ice packs to the neck, armpits, and groin.',
-      'Fan the person while misting with water.',
-      'Do NOT give fluids if the person is confused or unconscious.',
-      'If conscious, give small sips of cool water.',
-      'Monitor body temperature — aim to bring it below 39°C (102°F).',
-      'Stay with the person until medical help arrives.',
-    ],
-    warning: 'Heat stroke can cause organ damage or death if not treated within minutes.',
-  },
+  { id: 'cpr', emoji: '❤️', title: 'CPR Instructions', tagline: 'Cardiopulmonary Resuscitation', color: colors.danger, steps: ['Ensure the scene is safe before approaching the victim.', 'Check for responsiveness — tap shoulders and shout "Are you okay?"', 'Call emergency services or ask someone nearby to call.', 'Place the person on a firm, flat surface face-up.', 'Push hard and fast — at least 2 inches deep, 100-120 per minute.', 'After 30 compressions, give 2 rescue breaths.', 'Continue cycles until help arrives.'], warning: 'Do NOT stop CPR until professional help arrives.' },
+  { id: 'bleeding', emoji: '🩸', title: 'Bleeding Control', tagline: 'Severe Wound Management', color: colors.primary600, steps: ['Put on gloves if available.', 'Apply firm, direct pressure with a clean cloth.', 'Do NOT remove cloth if blood soaks through — add more layers.', 'Elevate wound above heart if possible.', 'Apply tourniquet 2-3 inches above wound (limbs only) for severe cases.', 'Get medical help immediately.'], warning: 'Tourniquets are a last resort for life-threatening limb bleeding.' },
+  { id: 'burns', emoji: '🔥', title: 'Burns Treatment', tagline: 'Thermal and Chemical Burns', color: colors.warning, steps: ['Remove person from source of burn immediately.', 'Cool burn under cool running water for at least 10 minutes.', 'Do NOT apply ice, butter, or toothpaste.', 'Cover loosely with a sterile, non-stick bandage.', 'Do NOT pop blisters.'], warning: 'Seek medical attention for burns larger than 3 inches.' },
+  { id: 'fracture', emoji: '🦴', title: 'Fracture Handling', tagline: 'Broken or Dislocated Bones', color: colors.info, steps: ['Keep the person still — do NOT move the injured area.', 'Call for emergency medical help.', 'Immobilize the injury — use a splint or padding.', 'Do NOT try to realign a bone.', 'Apply ice packs wrapped in cloth.'], warning: 'Never attempt to move someone with a suspected spinal injury.' },
+  { id: 'choking', emoji: '🫁', title: 'Choking Rescue', tagline: 'Heimlich Maneuver', color: colors.purple, steps: ['Ask "Are you choking?"', 'Stand behind person and wrap arms around waist.', 'Make a fist just above the navel.', 'Grab fist with other hand and give quick upward thrusts.', 'Repeat until object is dislodged.'], warning: 'Call emergency services immediately.' },
+  { id: 'heatstroke', emoji: '☀️', title: 'Heat Stroke', tagline: 'Overheating Emergency', color: '#ea580c', steps: ['Move person to a cool, shaded area immediately.', 'Call emergency services.', 'Cool person rapidly with cold water or ice packs.', 'Fan the person.', 'Do NOT give fluids if confused or unconscious.'], warning: 'Heat stroke can cause organ damage or death within minutes.' },
 ];
 
 export default function FirstAidGuideScreen() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>🏥 First Aid Guide</Text>
-          <Text style={styles.subtitle}>Offline emergency reference — always available</Text>
-        </View>
+  const toggleExpand = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(expanded === id ? null : id);
+  };
 
-        {/* Disclaimer */}
-        <View style={styles.disclaimer}>
+  return (
+    <SafeAreaView style={shared.screen}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <FadeInView down delay={0} style={styles.header}>
+          <Text style={typography.h1}>🏥 First Aid</Text>
+          <Text style={styles.subtitle}>Offline emergency reference</Text>
+        </FadeInView>
+
+        <FadeInView delay={100} style={styles.disclaimer}>
           <Text style={styles.disclaimerText}>
             ⚠️ This guide is for reference only. Always call emergency services for serious injuries.
           </Text>
-        </View>
+        </FadeInView>
 
-        {/* Topics */}
-        {FIRST_AID_DATA.map((topic) => {
+        {FIRST_AID_DATA.map((topic, index) => {
           const isOpen = expanded === topic.id;
           return (
-            <TouchableOpacity
-              key={topic.id}
-              onPress={() => setExpanded(isOpen ? null : topic.id)}
-              activeOpacity={0.8}
-              style={styles.card}
-            >
-              {/* Card Header */}
-              <View style={styles.cardHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: `${topic.color}20` }]}>
-                  <Text style={{ fontSize: 24 }}>{topic.emoji}</Text>
+            <FadeInView key={topic.id} delay={150 + index * 50}>
+              <TouchableOpacity
+                onPress={() => toggleExpand(topic.id)}
+                activeOpacity={0.8}
+                style={[styles.card, isOpen && { borderColor: topic.color }]}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={[styles.iconCircle, { backgroundColor: `${topic.color}20` }]}>
+                    <Text style={{ fontSize: 24 }}>{topic.emoji}</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: spacing.md }}>
+                    <Text style={typography.h4}>{topic.title}</Text>
+                    <Text style={styles.cardTagline}>{topic.tagline}</Text>
+                  </View>
+                  <Text style={{ color: colors.dark500, fontSize: 16 }}>{isOpen ? '▲' : '▼'}</Text>
                 </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={styles.cardTitle}>{topic.title}</Text>
-                  <Text style={styles.cardTagline}>{topic.tagline}</Text>
-                </View>
-                <Text style={styles.chevron}>{isOpen ? '▲' : '▼'}</Text>
-              </View>
 
-              {/* Steps (expanded) */}
-              {isOpen && (
-                <View style={styles.stepsContainer}>
-                  {topic.steps.map((step, i) => (
-                    <View key={i} style={styles.stepRow}>
-                      <View style={[styles.stepBadge, { backgroundColor: `${topic.color}20` }]}>
-                        <Text style={[styles.stepNum, { color: topic.color }]}>{i + 1}</Text>
+                {isOpen && (
+                  <View style={styles.stepsContainer}>
+                    {topic.steps.map((step, i) => (
+                      <View key={i} style={styles.stepRow}>
+                        <View style={[styles.stepBadge, { backgroundColor: `${topic.color}20` }]}>
+                          <Text style={[styles.stepNum, { color: topic.color }]}>{i + 1}</Text>
+                        </View>
+                        <Text style={styles.stepText}>{step}</Text>
                       </View>
-                      <Text style={styles.stepText}>{step}</Text>
-                    </View>
-                  ))}
-                  {topic.warning && (
-                    <View style={styles.warningBox}>
-                      <Text style={styles.warningText}>⚠️ {topic.warning}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </TouchableOpacity>
+                    ))}
+                    {topic.warning && (
+                      <View style={styles.warningBox}>
+                        <Text style={styles.warningText}>⚠️ {topic.warning}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </TouchableOpacity>
+            </FadeInView>
           );
         })}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: spacing['4xl'] }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark950 },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 16 },
-
-  header: { marginBottom: 16 },
-  title: { color: colors.white, fontSize: 26, fontWeight: 'bold' },
-  subtitle: { color: colors.dark400, fontSize: 13, marginTop: 4 },
+  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  header: { marginBottom: spacing.lg },
+  subtitle: { color: colors.dark400, fontSize: 14, marginTop: spacing.xs, fontWeight: '500' },
 
   disclaimer: {
     backgroundColor: 'rgba(234,179,8,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(234,179,8,0.3)',
-    borderRadius: radius.md,
-    padding: 12,
-    marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(234,179,8,0.3)',
+    borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.xl,
   },
-  disclaimerText: { color: '#fbbf24', fontSize: 12, lineHeight: 18 },
+  disclaimerText: { color: '#fbbf24', fontSize: 13, lineHeight: 18, fontWeight: '600' },
 
-  card: {
-    backgroundColor: colors.dark900,
-    borderWidth: 1,
-    borderColor: colors.dark700,
-    borderRadius: radius.xl,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitle: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
-  cardTagline: { color: colors.dark400, fontSize: 12, marginTop: 2 },
-  chevron: { color: colors.dark500, fontSize: 12 },
+  card: { ...shared.cardGlass, marginBottom: spacing.md, padding: spacing.lg, borderRadius: radius.xl },
+  cardHeader: { flexDirection: 'row', alignItems: 'center' },
+  iconCircle: { width: 52, height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  cardTagline: { color: colors.dark400, fontSize: 12, marginTop: 2, fontWeight: '500' },
 
-  stepsContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.dark800,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    marginBottom: 14,
-    alignItems: 'flex-start',
-  },
-  stepBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    marginTop: 1,
-  },
-  stepNum: { fontSize: 12, fontWeight: 'bold' },
-  stepText: { flex: 1, color: colors.dark200, fontSize: 14, lineHeight: 20 },
+  stepsContainer: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.dark800 },
+  stepRow: { flexDirection: 'row', marginBottom: spacing.md, alignItems: 'flex-start' },
+  stepBadge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  stepNum: { fontSize: 13, fontWeight: '900' },
+  stepText: { flex: 1, color: colors.dark200, fontSize: 14, lineHeight: 22 },
 
-  warningBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.3)',
-    borderRadius: radius.md,
-    padding: 12,
-    marginTop: 4,
-  },
-  warningText: { color: colors.primary300, fontSize: 12, lineHeight: 18 },
+  warningBox: { backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', borderRadius: radius.md, padding: spacing.md, marginTop: spacing.sm },
+  warningText: { color: colors.primary300, fontSize: 13, lineHeight: 18, fontWeight: '600' },
 });

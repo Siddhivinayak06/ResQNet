@@ -1,4 +1,6 @@
-import api from './api';
+import api, { ApiError } from './api';
+import { queueIncident } from './db';
+import NetInfo from '@react-native-community/netinfo';
 
 // ─── Types ───────────────────────────────────────────────────
 export type IncidentType = 'accident' | 'fire' | 'medical' | 'disaster';
@@ -14,6 +16,7 @@ export interface Incident {
   status: IncidentStatus;
   reportedAt: string;
   reporterId?: string;
+  isOffline?: boolean;
 }
 
 export interface CreateIncidentPayload {
@@ -26,25 +29,65 @@ export interface CreateIncidentPayload {
 interface IncidentListResponse {
   success: boolean;
   count: number;
-  data: Incident[];
+  data: any[];
 }
 
 interface IncidentSingleResponse {
   success: boolean;
-  data: Incident;
+  data: any;
+}
+
+// ─── Helper ──────────────────────────────────────────────────
+export function mapIncident(raw: any): Incident {
+  return {
+    ...raw,
+    latitude: raw.location?.coordinates[1] ?? 0,
+    longitude: raw.location?.coordinates[0] ?? 0,
+    _id: raw._id || raw.incidentId, // handle just in case
+    reportedAt: raw.createdAt || raw.timestamp || raw.reportedAt || new Date().toISOString(),
+  };
 }
 
 // ─── Service ─────────────────────────────────────────────────
 export const incidentService = {
   /**
    * Create a new incident report.
+   * If offline, queues the incident in SQLite and returns a mock object.
    */
   async reportIncident(payload: CreateIncidentPayload): Promise<Incident> {
-    const { data } = await api.post<IncidentSingleResponse>(
-      '/api/incidents',
-      payload
-    );
-    return data.data;
+    const netInfo = await NetInfo.fetch();
+    
+    if (!netInfo.isConnected || !netInfo.isInternetReachable) {
+      // Offline mode: queue in SQLite
+      const id = await queueIncident(payload);
+      return {
+        _id: `offline-${id}`,
+        ...payload,
+        status: 'pending',
+        reportedAt: new Date().toISOString(),
+        isOffline: true,
+      } as Incident;
+    }
+
+    try {
+      const { data } = await api.post<IncidentSingleResponse>(
+        '/incidents',
+        payload
+      );
+      return mapIncident(data.data);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'NETWORK_ERROR') {
+        const id = await queueIncident(payload);
+        return {
+          _id: `offline-${id}`,
+          ...payload,
+          status: 'pending',
+          reportedAt: new Date().toISOString(),
+          isOffline: true,
+        } as Incident;
+      }
+      throw error;
+    }
   },
 
   /**
@@ -54,10 +97,10 @@ export const incidentService = {
     status?: IncidentStatus;
     incidentType?: IncidentType;
   }): Promise<Incident[]> {
-    const { data } = await api.get<IncidentListResponse>('/api/incidents', {
+    const { data } = await api.get<IncidentListResponse>('/incidents', {
       params,
     });
-    return data.data || [];
+    return (data.data || []).map(mapIncident);
   },
 
   /**
@@ -65,9 +108,9 @@ export const incidentService = {
    */
   async getIncidentById(id: string): Promise<Incident> {
     const { data } = await api.get<IncidentSingleResponse>(
-      `/api/incidents/${id}`
+      `/incidents/${id}`
     );
-    return data.data;
+    return mapIncident(data.data);
   },
 
   /**
@@ -78,40 +121,16 @@ export const incidentService = {
     status: IncidentStatus
   ): Promise<Incident> {
     const { data } = await api.patch<IncidentSingleResponse>(
-      `/api/incidents/${id}`,
+      `/incidents/${id}/status`,
       { status }
     );
-    return data.data;
+    return mapIncident(data.data);
   },
 
   /**
    * Delete an incident.
    */
   async deleteIncident(id: string): Promise<void> {
-    await api.delete(`/api/incidents/${id}`);
-  },
-
-  /**
-   * Upload an image for an incident.
-   */
-  async uploadImage(id: string, formData: FormData): Promise<string> {
-    const { data } = await api.post(`/api/incidents/${id}/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data.data?.imageUrl || '';
-  },
-
-  /**
-   * Get nearby emergency services (hospitals, police, fire stations).
-   */
-  async getNearbyServices(
-    latitude: number,
-    longitude: number,
-    radius?: number
-  ) {
-    const { data } = await api.get('/api/services/nearby', {
-      params: { latitude, longitude, radius },
-    });
-    return data.data || [];
+    await api.delete(`/incidents/${id}`);
   },
 };

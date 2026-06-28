@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = 'http://localhost:5001';
+const DEFAULT_API_URL = 'http://localhost:5001/api/v1';
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
 
@@ -24,7 +24,7 @@ export function getApiBaseUrl() {
 
 /**
  * Reusable fetch wrapper that:
- * - Prepends the API base URL
+ * - Prepends the API base URL (/api/v1)
  * - Sets Content-Type for JSON bodies (skips for FormData)
  * - Attaches Bearer token from localStorage or explicit param
  * - Sends credentials for cookie-based auth
@@ -55,14 +55,29 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
 
 /**
  * Convenience wrapper that parses JSON and throws on errors.
- * Use this when you want automatic error handling.
+ * Includes basic 401 handling.
  */
 export async function apiFetchJSON<T = any>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const response = await apiFetch(path, options);
-  const data = await response.json();
+  
+  if (response.status === 401) {
+    if (typeof window !== 'undefined') {
+      // Automatic logout on token expiry
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
 
   if (!response.ok) {
-    const message = data.error || data.errors?.[0] || 'API request failed';
+    const message = data.error || data.message || data.errors?.[0] || 'API request failed';
     const error = new Error(message) as Error & { status: number; data: any };
     error.status = response.status;
     error.data = data;

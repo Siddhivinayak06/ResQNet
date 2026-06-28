@@ -27,7 +27,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     name: '',
-    role: 'user',
+    role: 'citizen',
   });
   const [error, setError] = useState('');
 
@@ -151,7 +151,7 @@ export default function RegisterPage() {
               <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="user">Citizen (Report emergencies)</SelectItem>
+              <SelectItem value="citizen">Citizen (Report emergencies)</SelectItem>
               <SelectItem value="volunteer">Volunteer (Rescue personnel)</SelectItem>
               <SelectItem value="admin">Admin (System administrator)</SelectItem>
             </SelectContent>

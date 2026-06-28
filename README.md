@@ -19,9 +19,9 @@ ResQNet is a comprehensive, full-stack emergency reporting and rescue coordinati
 
 ### Backend API (Node.js / Express)
 - **Real-Time Sync**: Bi-directional communication using Socket.io.
-- **Role-Based Access Control (RBAC)**: Distinct permissions for Citizens, Volunteers, and Admins.
-- **Secure Authentication**: JWT-based authentication flow.
-- **Geospatial Capabilities**: Haversine distance calculations and location-based filtering.
+- **Role-Based Access Control (RBAC)**: Distinct permissions for Citizens, Volunteers, and Admins via middleware.
+- **Secure Authentication**: JWT-based authentication flow with token rotation and rate-limiting.
+- **Geospatial Capabilities**: Haversine distance calculations and location-based filtering via MongoDB `2dsphere` indexes.
 
 ---
 
@@ -31,11 +31,20 @@ ResQNet is a comprehensive, full-stack emergency reporting and rescue coordinati
 | :--- | :--- |
 | **Mobile App** | React Native, Expo, TypeScript, React Navigation, Socket.io-client, React Native Maps, Expo Notifications |
 | **Web Frontend** | Next.js 14, React, Tailwind CSS, Leaflet.js |
-| **Backend API** | Node.js, Express, MongoDB, Mongoose, Socket.io, JWT |
+| **Backend API** | Node.js, Express, MongoDB, Mongoose, Socket.io, JWT, Zod, Helmet |
 
 ---
 
-## 📋 Project Structure
+## 🏗️ Architecture Overview
+
+ResQNet utilizes a decoupled architecture:
+1. **Node.js/Express Backend**: Acts as the central source of truth. It exposes a RESTful API (`/api/v1`) for authentication, incident management, and data retrieval, alongside a Socket.io server for real-time event broadcasting.
+2. **Next.js Dashboard**: A web portal for dispatchers and admins. It consumes the REST API and listens to WebSocket events to maintain a real-time live map and incident queue.
+3. **React Native Mobile App**: A mobile interface for citizens to report emergencies and for responders to receive tasks. It features offline queuing (via `AsyncStorage`) that automatically flushes to the backend REST API when connectivity is restored.
+
+---
+
+## 📋 Folder Structure
 
 ```text
 ResQNet/
@@ -44,9 +53,7 @@ ResQNet/
 │   │   ├── components/      # Reusable UI (SOSButton, IncidentMap, etc.)
 │   │   ├── navigation/      # 3-Tab Bottom Nav + Stack Navigator
 │   │   ├── screens/         # Auth, Home, Emergency, Profile, First Aid
-│   │   ├── services/        # API Axios instance, Socket setup, Notifications
-│   │   ├── theme/           # Centralized color tokens and shared styles
-│   │   └── utils/           # Offline queueing, location helpers
+│   │   └── services/        # API Axios instance, Socket setup, Notifications
 │   └── app.json             # Expo configuration and permissions
 │
 ├── frontend/                # Next.js Web Dashboard
@@ -55,16 +62,18 @@ ResQNet/
 │   └── lib/                 # Utility functions and API clients
 │
 └── backend/                 # Node.js REST API & WebSocket Server
-    ├── controllers/         # Request handlers (auth, incidents)
-    ├── models/              # Mongoose schemas
-    ├── routes/              # Express route definitions
-    ├── socket/              # Socket.io event handlers
-    └── server.js            # Entry point (binds to 0.0.0.0 for mobile access)
+    ├── src/
+    │   ├── controllers/     # Request handlers (auth, incidents)
+    │   ├── models/          # Mongoose schemas (User, Incident, etc.)
+    │   ├── routes/          # Express route definitions
+    │   ├── middleware/      # RBAC, JWT validation, Zod validation
+    │   └── socket/          # Socket.io event handlers
+    └── server.ts            # Entry point (binds to 0.0.0.0 for mobile access)
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation & Local Setup
 
 ### Prerequisites
 - Node.js (v18+)
@@ -80,8 +89,9 @@ npm install
 Create a `.env` file in the `backend` directory:
 ```env
 PORT=5001
-MONGODB_URI=mongodb://127.0.0.1:27017/resqnet
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/resqnet?retryWrites=true&w=majority
 JWT_SECRET=your_super_secret_key
+JWT_EXPIRES_IN=24h
 CLIENT_URL=http://localhost:3000
 ```
 Start the backend server:
@@ -97,7 +107,8 @@ npm install
 ```
 Create a `.env.local` file in the `frontend` directory:
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:5001/api
+NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
+NEXT_PUBLIC_SOCKET_URL=http://localhost:5001
 ```
 Start the Next.js app:
 ```bash
@@ -112,7 +123,8 @@ npm install
 ```
 Create a `.env` file in the `mobile` directory. **Important:** Replace `192.168.1.5` with your computer's actual local IP address so the physical device can reach the backend.
 ```env
-EXPO_PUBLIC_API_URL=http://192.168.1.5:5001/api
+EXPO_PUBLIC_API_URL=http://192.168.1.5:5001/api/v1
+EXPO_PUBLIC_SOCKET_URL=http://192.168.1.5:5001
 ```
 Start the Expo development server:
 ```bash
@@ -124,19 +136,33 @@ Scan the QR code with the Expo Go app on your phone, or press `i`/`a` to open in
 
 ---
 
-## 📱 Mobile App UI Highlights
+## 🚢 Production Deployment
 
-- **Dark Mode Aesthetic**: A cohesive, modern dark theme utilizing soft glows and shadow depths.
-- **Floating Quick Actions**: One-tap access to First Aid, Emergency Contacts, and Reporting from the Home screen.
-- **Smart Feedback**: Haptic vibrations on the SOS button and toast notifications for offline queuing.
-- **Accessible**: Screen-reader friendly labels (`accessibilityRole`, `accessibilityLabel`) integrated across all components.
+### Frontend (Next.js) - To Vercel
+1. Push code to GitHub
+2. Connect GitHub repo to Vercel
+3. Set the root directory to `frontend`
+4. Set up environment variables (`NEXT_PUBLIC_API_URL`, etc.)
+5. Deploy with one click.
+
+### Docker (Local deployment example)
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /frontend/app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
 
 ---
 
-## 🔒 Security & Performance
-- **Optimized Rendering**: `React.memo` utilized for incident lists to prevent unnecessary re-renders during Socket.io real-time updates.
-- **Graceful Error Handling**: Resilient network request intercepts with automatic user logout on expired JWTs.
-- **Type Safety**: End-to-end TypeScript implementation in the mobile app.
+## 🧪 Testing
+
+For comprehensive testing guides covering the frontend, backend, accessibility, and offline modes, please refer to the **[TESTING.md](./TESTING.md)** file.
 
 ---
 

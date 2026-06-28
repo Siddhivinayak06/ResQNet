@@ -2,7 +2,7 @@
 
 import 'leaflet/dist/leaflet.css';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -58,8 +58,24 @@ export default function IncidentMap({ incidents }: { incidents: IncidentMapItem[
     return [37.7749, -122.4194];
   }, [incidents]);
 
+  // Fix for React 18 Strict Mode / Next.js Fast Refresh crashing Leaflet:
+  // We generate a unique key for the MapContainer on mount. Fast Refresh preserves state
+  // but re-runs effects, so this will generate a new key ONLY on Fast Refresh/Mount,
+  // forcing React to create a fresh DOM node for Leaflet.
+  const [mapId, setMapId] = useState(() => Date.now());
+  
+  useEffect(() => {
+    setMapId(Date.now());
+  }, []);
+
   return (
-    <MapContainer center={fallbackCenter} zoom={12} className="h-full w-full" scrollWheelZoom>
+    <MapContainer 
+      key={mapId}
+      center={fallbackCenter} 
+      zoom={12} 
+      className="h-full w-full" 
+      scrollWheelZoom
+    >
       <TileLayer
         attribution="&copy; OpenStreetMap contributors"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

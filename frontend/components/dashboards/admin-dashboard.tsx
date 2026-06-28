@@ -125,11 +125,16 @@ export default function AdminDashboard({
 
     const fetchStats = async () => {
       try {
-        const response = await axios.get(`${getApiBaseUrl()}/api/admin/stats`, {
+        const response = await axios.get(`${getApiBaseUrl()}/incidents/stats`, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
-        setAdminStats(response.data);
+        // Adapt the backend response structure to the frontend expectations if needed,
+        // or just set the raw data.
+        setAdminStats({
+          averageResponseTime: response.data.data.averageResponseTimeMinutes || 0,
+          successRate: response.data.data.totalResolved > 0 ? (response.data.data.totalResolved / response.data.data.totalToday) * 100 : 0,
+        } as AdminStats);
         setStatsError(null);
       } catch (error) {
         console.error('Failed to load admin stats:', error);
@@ -284,19 +289,20 @@ export default function AdminDashboard({
   const activeResponders = responders.filter((responder) => responder.status === 'available').length;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+    <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
       <aside className="space-y-6">
-        <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 text-red-300">
-              <LayoutDashboard className="h-5 w-5" />
+        <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-700" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-lg shadow-primary/20">
+              <LayoutDashboard className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Admin</p>
-              <h2 className="text-lg font-semibold text-white">Analytics Hub</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Admin</p>
+              <h2 className="text-xl font-bold text-foreground">Analytics Hub</h2>
             </div>
           </div>
-          <div className="mt-4 space-y-2 text-sm text-slate-300">
+          <div className="mt-6 space-y-3 text-sm font-medium text-muted-foreground relative z-10">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-rose-300" />
               Overview
@@ -316,7 +322,7 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5">
+        <div className="glass-card rounded-2xl p-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
             <Filter className="h-4 w-4 text-rose-300" />
             Filters
@@ -388,7 +394,7 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5">
+        <div className="glass-card rounded-2xl p-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
             <CalendarDays className="h-4 w-4 text-rose-300" />
             System KPIs
@@ -413,7 +419,7 @@ export default function AdminDashboard({
 
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="glass-card rounded-2xl p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/20 text-rose-300">
                 <Siren className="h-5 w-5" />
@@ -424,7 +430,7 @@ export default function AdminDashboard({
               </div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="glass-card rounded-2xl p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
                 <AlertTriangle className="h-5 w-5" />
@@ -435,7 +441,7 @@ export default function AdminDashboard({
               </div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="glass-card rounded-2xl p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300">
                 <ListChecks className="h-5 w-5" />
@@ -446,7 +452,7 @@ export default function AdminDashboard({
               </div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="glass-card rounded-2xl p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/20 text-blue-300">
                 <CalendarDays className="h-5 w-5" />
@@ -460,7 +466,7 @@ export default function AdminDashboard({
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="glass-card rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-white mb-4">Incidents by category</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -483,7 +489,7 @@ export default function AdminDashboard({
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="glass-card rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-white mb-4">Daily incident trend</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -509,11 +515,11 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-            <h3 className="text-sm font-semibold text-white mb-4">Recent incidents</h3>
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+          <div className="glass-card rounded-2xl p-6">
+            <h3 className="text-base font-bold text-foreground mb-4">Recent incidents</h3>
             {loading ? (
-              <div className="flex h-48 items-center justify-center text-slate-400">
+              <div className="flex h-48 items-center justify-center text-muted-foreground font-medium">
                 Loading incidents...
               </div>
             ) : (
@@ -567,7 +573,7 @@ export default function AdminDashboard({
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="glass-card rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-white mb-4">Incident distribution</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">

@@ -8,10 +8,19 @@ interface CitizenDashboardProps {
   loading: boolean;
 }
 
+import { useState } from 'react';
+
 export default function CitizenDashboard({ reports, loading }: CitizenDashboardProps) {
-  const openReports = reports.filter(r => r.status === 'open').length;
-  const inProgress = reports.filter(r => r.status === 'in-progress').length;
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const openReports = reports.filter(r => r.status === 'open' || r.status === 'pending').length;
+  const inProgress = reports.filter(r => r.status === 'in-progress' || r.status === 'assigned' || r.status === 'active').length;
   const resolved = reports.filter(r => r.status === 'resolved').length;
+
+  const totalPages = Math.ceil(reports.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedReports = reports.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="space-y-8">
@@ -72,14 +81,14 @@ export default function CitizenDashboard({ reports, loading }: CitizenDashboardP
           </div>
         ) : (
           <div className="space-y-3">
-            {reports.map(report => (
-              <div key={report.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-700/50 transition">
+            {paginatedReports.map(report => (
+              <div key={report._id || report.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-700/50 transition">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        report.status === 'open' ? 'bg-blue-500/20 text-blue-400' :
-                        report.status === 'in-progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                        ['open', 'pending'].includes(report.status) ? 'bg-blue-500/20 text-blue-400' :
+                        ['in-progress', 'assigned', 'active'].includes(report.status) ? 'bg-yellow-500/20 text-yellow-400' :
                         'bg-green-500/20 text-green-400'
                       }`}>
                         {report.status.replace('-', ' ').toUpperCase()}
@@ -89,17 +98,41 @@ export default function CitizenDashboard({ reports, loading }: CitizenDashboardP
                         report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
                         'bg-blue-500/20 text-blue-400'
                       }`}>
-                        {report.severity.toUpperCase()}
+                        {report.severity ? report.severity.toUpperCase() : 'UNKNOWN'}
                       </span>
                     </div>
                     <p className="text-white font-semibold mb-2">{report.description}</p>
                     <div className="text-slate-400 text-sm">
-                      {new Date(report.timestamp).toLocaleString()}
+                      {new Date(report.timestamp || report.reportedAt).toLocaleString()}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center space-x-4 mt-6">
+                <Button 
+                  variant="outline" 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="border-slate-600 text-slate-300"
+                >
+                  Previous
+                </Button>
+                <span className="text-slate-400 text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="border-slate-600 text-slate-300"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -9,14 +9,39 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError } from '../../services/api';
-import { colors, radius } from '../../theme/colors';
+import { colors, radius, spacing } from '../../theme/colors';
+import { typography, shared } from '../../theme/styles';
 
 type Props = NativeStackScreenProps<any, 'Login'>;
+
+const FadeInView = ({ children, delay = 0, style, down = false }: any) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [down ? -20 : 20, 0],
+  });
+
+  return (
+    <Animated.View style={[style, { opacity: anim, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+};
 
 export default function LoginScreen({ navigation }: Props) {
   const { login } = useAuth();
@@ -45,156 +70,149 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.flex}>
+    <SafeAreaView style={shared.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
+        style={{ flex: 1 }}
       >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        style={styles.bg}
-      >
-        <View style={styles.container}>
-          {/* Logo */}
-          <View style={styles.logoSection}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoLetter}>R</Text>
-            </View>
-            <Text style={styles.logoTitle}>ResQNet</Text>
-            <Text style={styles.logoSubtitle}>Emergency Rescue Network</Text>
-          </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            {/* Animated Logo Section */}
+            <FadeInView down delay={0} style={styles.logoSection}>
+              <View style={styles.logoCircle}>
+                <Text style={styles.logoLetter}>R</Text>
+              </View>
+              <Text style={typography.h1}>ResQNet</Text>
+              <Text style={styles.logoSubtitle}>Emergency Rescue Network</Text>
+            </FadeInView>
 
-          {/* Error Banner */}
-          {error !== '' && (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {/* Form Card */}
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Sign In</Text>
-
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.dark600}
-              value={email}
-              onChangeText={(t) => { setEmail(t); setError(''); }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              editable={!loading}
-            />
-
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              ref={passwordRef}
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={colors.dark600}
-              value={password}
-              onChangeText={(t) => { setPassword(t); setError(''); }}
-              secureTextEntry
-              returnKeyType="go"
-              onSubmitEditing={handleLogin}
-              editable={!loading}
-            />
-
-            <TouchableOpacity
-              onPress={handleLogin}
-              disabled={loading}
-              style={[styles.button, loading && styles.buttonDisabled]}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={loading ? 'Signing in' : 'Sign in'}
-            >
-              {loading && <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />}
-              <Text style={styles.buttonText}>
-                {loading ? 'Signing In...' : 'Sign In'}
+            {/* Form Card */}
+            <FadeInView delay={200} style={shared.cardGlass}>
+              <Text style={typography.sectionTitle}>Welcome Back</Text>
+              <Text style={[typography.bodySmall, { marginBottom: spacing.lg }]}>
+                Sign in to manage emergencies
               </Text>
-            </TouchableOpacity>
-          </View>
 
-          {/* Register link */}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Register')}
-            style={styles.linkRow}
-            disabled={loading}
-          >
-            <Text style={styles.linkText}>
-              Don't have an account?{' '}
-              <Text style={styles.linkBold}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+              {/* Error Banner */}
+              {error !== '' && (
+                <View style={shared.errorBanner}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+
+              <Text style={typography.label}>Email Address</Text>
+              <TextInput
+                style={shared.input}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.dark600}
+                value={email}
+                onChangeText={(t) => { setEmail(t); setError(''); }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                editable={!loading}
+              />
+
+              <Text style={typography.label}>Password</Text>
+              <TextInput
+                ref={passwordRef}
+                style={shared.input}
+                placeholder="••••••••"
+                placeholderTextColor={colors.dark600}
+                value={password}
+                onChangeText={(t) => { setPassword(t); setError(''); }}
+                secureTextEntry
+                returnKeyType="go"
+                onSubmitEditing={handleLogin}
+                editable={!loading}
+              />
+
+              <TouchableOpacity
+                onPress={handleLogin}
+                disabled={loading}
+                style={[shared.buttonPrimary, { marginTop: spacing.md }, loading && shared.buttonDisabled]}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={loading ? 'Signing in' : 'Sign in'}
+              >
+                {loading && <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />}
+                <Text style={shared.buttonPrimaryText}>
+                  {loading ? 'Authenticating...' : 'Sign In'}
+                </Text>
+              </TouchableOpacity>
+            </FadeInView>
+
+            {/* Register link */}
+            <FadeInView delay={400} style={styles.linkRow}>
+              <Text style={typography.bodySmall}>
+                Don't have an account?{' '}
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')} disabled={loading}>
+                <Text style={styles.linkBold}>Create Account</Text>
+              </TouchableOpacity>
+            </FadeInView>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  bg: { backgroundColor: colors.dark950 },
-  scrollContent: { flexGrow: 1, justifyContent: 'center' },
-  container: { paddingHorizontal: 32 },
-
-  // Logo
-  logoSection: { alignItems: 'center', marginBottom: 40 },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  container: {
+    paddingHorizontal: spacing.lg,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: spacing['2xl'],
+  },
   logoCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: colors.primary600,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: colors.primary500,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4, shadowRadius: 16, elevation: 10,
+    width: 88,
+    height: 88,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary500,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    ...shared.glowRed,
   },
-  logoLetter: { color: colors.white, fontSize: 28, fontWeight: 'bold' },
-  logoTitle: { color: colors.white, fontSize: 30, fontWeight: 'bold' },
-  logoSubtitle: { color: colors.dark400, fontSize: 14, marginTop: 4 },
-
-  // Error
-  errorBanner: {
-    backgroundColor: colors.red900_30,
-    borderWidth: 1, borderColor: colors.red700_50,
-    borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12,
-    marginBottom: 16,
+  logoLetter: {
+    color: colors.white,
+    fontSize: 40,
+    fontWeight: '900',
   },
-  errorText: { color: colors.primary300, fontSize: 14, textAlign: 'center' },
-
-  // Form
-  formCard: {
-    backgroundColor: colors.dark900,
-    borderWidth: 1, borderColor: colors.dark700,
-    borderRadius: radius.xl, padding: 24,
+  logoSubtitle: {
+    color: colors.dark400,
+    fontSize: 14,
+    marginTop: spacing.xs,
+    letterSpacing: 0.5,
   },
-  formTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', marginBottom: 24 },
-  label: { color: colors.dark300, fontSize: 14, marginBottom: 8 },
-  input: {
-    backgroundColor: colors.dark800,
-    borderWidth: 1, borderColor: colors.dark600,
-    borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 14,
-    color: colors.white, fontSize: 16, marginBottom: 16,
+  errorText: {
+    color: colors.primary300,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
   },
-
-  // Button
-  button: {
-    backgroundColor: colors.primary600,
-    borderRadius: radius.md, paddingVertical: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginTop: 8,
+  linkRow: {
+    marginTop: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  buttonDisabled: { backgroundColor: colors.primary800 },
-  buttonText: { color: colors.white, fontWeight: 'bold', fontSize: 16 },
-
-  // Link
-  linkRow: { marginTop: 24, alignItems: 'center' },
-  linkText: { color: colors.dark400, fontSize: 14 },
-  linkBold: { color: colors.primary400, fontWeight: '600' },
+  linkBold: {
+    color: colors.primary500,
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });

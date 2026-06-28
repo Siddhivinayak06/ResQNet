@@ -2,15 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { API_BASE_URL } from './api';
 
 // ─── Types ───────────────────────────────────────────────────
-export interface SocketIncidentPayload {
-  incidentId: string;
-  incidentType: string;
-  description: string;
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-  status?: string;
-}
+export type SocketIncidentPayload = any;
 
 type IncidentHandler = (data: SocketIncidentPayload) => void;
 
@@ -24,7 +16,9 @@ class SocketService {
   connect(): void {
     if (this.socket?.connected) return;
 
-    this.socket = io(API_BASE_URL, {
+    const SOCKET_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+    this.socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

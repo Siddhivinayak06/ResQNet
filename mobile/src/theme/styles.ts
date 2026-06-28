@@ -1,30 +1,25 @@
 import { StyleSheet, TextStyle } from 'react-native';
-import { colors } from './colors';
+import { colors, spacing, radius, fontSize } from './colors';
 
 /**
- * Shared typography styles for consistency across all screens.
+ * Premium typography styles for mobile.
  */
 export const typography = StyleSheet.create({
-  // ─── Headings ──────────────────────────────────
-  h1: { color: colors.white, fontSize: 30, fontWeight: 'bold' } as TextStyle,
-  h2: { color: colors.white, fontSize: 24, fontWeight: 'bold' } as TextStyle,
-  h3: { color: colors.white, fontSize: 20, fontWeight: 'bold' } as TextStyle,
-  h4: { color: colors.white, fontSize: 18, fontWeight: '600' } as TextStyle,
+  // ─── Display & Headings ──────────────────────────
+  display: { color: colors.white, fontSize: fontSize['3xl'], fontWeight: '900', letterSpacing: -1 } as TextStyle,
+  h1: { color: colors.white, fontSize: fontSize['2xl'], fontWeight: '800', letterSpacing: -0.5 } as TextStyle,
+  h2: { color: colors.white, fontSize: fontSize.xl, fontWeight: '700' } as TextStyle,
+  h3: { color: colors.white, fontSize: fontSize.lg, fontWeight: '600' } as TextStyle,
+  h4: { color: colors.white, fontSize: fontSize.base, fontWeight: '600' } as TextStyle,
 
   // ─── Body ──────────────────────────────────────
-  body: { color: colors.dark200, fontSize: 15, lineHeight: 22 } as TextStyle,
-  bodySmall: { color: colors.dark300, fontSize: 14 } as TextStyle,
-  caption: { color: colors.dark400, fontSize: 12 } as TextStyle,
-  tiny: { color: colors.dark500, fontSize: 10 } as TextStyle,
+  body: { color: colors.dark200, fontSize: fontSize.base, lineHeight: 24 } as TextStyle,
+  bodySmall: { color: colors.dark300, fontSize: fontSize.sm, lineHeight: 20 } as TextStyle,
+  caption: { color: colors.dark400, fontSize: fontSize.xs, letterSpacing: 0.2 } as TextStyle,
 
-  // ─── Labels ────────────────────────────────────
-  label: { color: colors.dark300, fontSize: 14, marginBottom: 8 } as TextStyle,
-  sectionTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold' } as TextStyle,
-
-  // ─── Buttons ───────────────────────────────────
-  buttonPrimary: { color: colors.white, fontWeight: 'bold', fontSize: 16 } as TextStyle,
-  buttonSecondary: { color: colors.primary400, fontWeight: '600', fontSize: 16 } as TextStyle,
-  link: { color: colors.primary400, fontWeight: '600' } as TextStyle,
+  // ─── Labels & Specific ─────────────────────────
+  label: { color: colors.dark300, fontSize: fontSize.sm, fontWeight: '500', marginBottom: spacing.sm } as TextStyle,
+  sectionTitle: { color: colors.white, fontSize: fontSize.lg, fontWeight: '700', letterSpacing: 0.5 } as TextStyle,
 });
 
 /**
@@ -39,89 +34,134 @@ export const shared = StyleSheet.create({
   screenPadded: {
     flex: 1,
     backgroundColor: colors.dark950,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.dark950,
   },
 
-  // ─── Cards ─────────────────────────────────────
+  // ─── Cards (Floating style) ────────────────────
   card: {
     backgroundColor: colors.dark900,
     borderWidth: 1,
-    borderColor: colors.dark700,
-    borderRadius: 20,
-    padding: 20,
+    borderColor: colors.dark800,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   cardSmall: {
     backgroundColor: colors.dark900,
     borderWidth: 1,
-    borderColor: colors.dark700,
-    borderRadius: 16,
-    padding: 16,
+    borderColor: colors.dark800,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  cardGlass: {
+    backgroundColor: colors.glassCard,
+    borderWidth: 1,
+    borderColor: colors.glassLight,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
   },
 
   // ─── Inputs ────────────────────────────────────
   input: {
-    backgroundColor: colors.dark800,
+    backgroundColor: colors.dark900,
     borderWidth: 1,
-    borderColor: colors.dark600,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderColor: colors.dark700,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     color: colors.white,
-    fontSize: 16,
-    marginBottom: 16,
+    fontSize: fontSize.base,
+    marginBottom: spacing.md,
+  },
+  inputFocused: {
+    borderColor: colors.primary500,
+    backgroundColor: colors.dark800,
   },
 
   // ─── Buttons ───────────────────────────────────
   buttonPrimary: {
-    backgroundColor: colors.primary600,
-    borderRadius: 12,
-    paddingVertical: 16,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    backgroundColor: colors.primary500,
+    borderRadius: radius.full,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary500,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  buttonPrimaryText: {
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: fontSize.base,
   },
   buttonDisabled: {
-    backgroundColor: colors.primary800,
+    backgroundColor: colors.dark700,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   buttonOutline: {
-    backgroundColor: colors.dark900,
-    borderWidth: 1,
-    borderColor: colors.dark700,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center' as const,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: colors.dark600,
+    borderRadius: radius.full,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonOutlineText: {
+    color: colors.dark200,
+    fontWeight: '600',
+    fontSize: fontSize.base,
   },
 
-  // ─── Banners ───────────────────────────────────
+  // ─── Banners & Badges ──────────────────────────
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+  },
   errorBanner: {
     backgroundColor: colors.red900_30,
     borderWidth: 1,
     borderColor: colors.red700_50,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
   },
 
   // ─── Separators ────────────────────────────────
   divider: {
     height: 1,
     backgroundColor: colors.dark800,
+    marginVertical: spacing.md,
   },
 
-  // ─── Shadows ───────────────────────────────────
-  shadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
+  // ─── Effects ───────────────────────────────────
   glowRed: {
     shadowColor: colors.primary500,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowOpacity: 0.8,
+    shadowRadius: 24,
+    elevation: 16,
   },
 });

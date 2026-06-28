@@ -92,7 +92,7 @@ export const notificationService = {
    */
   async sendTokenToBackend(token: string): Promise<void> {
     try {
-      await api.post('/api/auth/push-token', { pushToken: token });
+      await api.post('/auth/push-token', { pushToken: token });
     } catch {
       // Silently fail — backend may not have this endpoint yet
       console.log('ℹ️ Push token registration skipped (endpoint may not exist).');
