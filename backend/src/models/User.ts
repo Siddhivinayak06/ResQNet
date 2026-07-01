@@ -30,13 +30,17 @@ export interface IUser extends Document {
   loginAttempts: number;
   lockedUntil: Date | null;
 
-  // Profile
+  // Profile & RBAC
+  departmentId: Types.ObjectId | null;
+  availability: boolean;
+  verificationStatus: 'pending' | 'verified' | 'rejected';
+  deviceTokens: string[];
   emergencyContacts: EmergencyContact[];
   medicalProfileId: Types.ObjectId | null;
 
   // Status
   isActive: boolean;
-  isVerified: boolean;
+  isVerified: boolean; // Retained for backward compatibility
 
   // Timestamps (from Mongoose)
   createdAt: Date;
@@ -92,7 +96,7 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['citizen', 'responder', 'volunteer', 'admin', 'hospital_admin', 'police_admin', 'fire_admin', 'super_admin'],
+      enum: ['citizen', 'volunteer', 'department_admin', 'super_admin'],
       default: 'citizen',
       index: true,
     },
@@ -115,13 +119,17 @@ const userSchema = new Schema<IUser>(
     loginAttempts: { type: Number, default: 0 },
     lockedUntil: { type: Date, default: null },
 
-    // Profile
+    // Profile & RBAC
+    departmentId: { type: Schema.Types.ObjectId, ref: 'Department', default: null },
+    availability: { type: Boolean, default: false },
+    verificationStatus: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    deviceTokens: { type: [String], default: [] },
     emergencyContacts: { type: [emergencyContactSchema], default: [] },
     medicalProfileId: { type: Schema.Types.ObjectId, ref: 'MedicalProfile', default: null },
 
     // Status
     isActive: { type: Boolean, default: true },
-    isVerified: { type: Boolean, default: false },
+    isVerified: { type: Boolean, default: false }, // Retained for backward compatibility
   },
   {
     timestamps: true,

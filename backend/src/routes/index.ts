@@ -13,7 +13,8 @@ import resourceRoutes from './resourceRoutes.js';
 import disasterRoutes from './disasterRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
 import adminRoutes from './adminRoutes.js';
-
+import civicIssueRoutes from './civicIssueRoutes.js';
+import departmentRoutes from './departmentRoutes.js';
 const router = Router();
 
 // Mount all v1 routes
@@ -26,5 +27,7 @@ router.use('/resources', resourceRoutes);
 router.use('/disasters', disasterRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
+router.use('/civic-issues', civicIssueRoutes);
+router.use('/departments', departmentRoutes);
 
 export default router;

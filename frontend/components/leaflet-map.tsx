@@ -5,6 +5,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
+
+
 // Fix for default marker icons in Leaflet with Next.js/Webpack
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -47,13 +49,28 @@ interface MapProps {
 }
 
 export default function LeafletMap({ reports }: MapProps) {
+  // Fix for React 18 Strict Mode and Fast Refresh: synchronously clear _leaflet_id before render
+  if (typeof window !== 'undefined') {
+    const wrapper = document.getElementById('leaflet-map-wrapper');
+    if (wrapper && wrapper.firstElementChild) {
+      (wrapper.firstElementChild as any)._leaflet_id = null;
+    }
+  }
   // Center roughly on an average or default position
   const defaultCenter: [number, number] = reports.length > 0 
     ? [reports[0].latitude, reports[0].longitude] 
     : [19.076, 72.8777];
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  if (!isMounted) return <div className="w-full bg-slate-900 rounded-lg animate-pulse h-96 relative border border-slate-700" />;
+
   return (
-    <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-700 h-96 relative">
+    <div id="leaflet-map-wrapper" className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-700 h-96 relative">
       <MapContainer 
         center={defaultCenter} 
         zoom={12} 

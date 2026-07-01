@@ -14,3 +14,6 @@ export { AuditLog, type IAuditLog } from './AuditLog.js';
 export { Notification, type INotification } from './Notification.js';
 export { Disaster, type IDisaster } from './Disaster.js';
 export { MedicalProfile, type IMedicalProfile } from './MedicalProfile.js';
+export { CivicIssue, type ICivicIssue } from './CivicIssue.js';
+export { Department, type IDepartment } from './Department.js';
+export { DepartmentAssignment, type IDepartmentAssignment } from './DepartmentAssignment.js';

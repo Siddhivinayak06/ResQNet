@@ -1,176 +1,671 @@
-# ResQNet — Real-Time Emergency Rescue Network
+# 🛡️ GuardianX – AI-Powered Smart City Emergency & Civic Intelligence Platform
 
-ResQNet is a comprehensive, full-stack emergency reporting and rescue coordination platform. It features a React Native mobile application for citizens and responders, a Next.js web dashboard for dispatchers, and a robust Node.js backend powered by MongoDB and Socket.io for real-time synchronization.
+> **One Platform for Emergency Response, Civic Issue Management, and Intelligent City Governance**
 
-## 🚨 Key Features
+GuardianX is a next-generation Smart City platform that combines **real-time emergency response**, **AI-powered civic issue management**, **government command center**, **volunteer coordination**, **live incident tracking**, and **disaster intelligence** into one unified ecosystem.
 
-### Mobile Application (React Native / Expo)
-- **Real-Time Map**: Live visualization of nearby incidents using Socket.io and React Native Maps.
-- **SOS Button**: 3-second hold to instantly broadcast an emergency with GPS coordinates.
-- **Offline First**: Reports are queued in `AsyncStorage` when offline and automatically synced when connectivity is restored.
-- **Offline First Aid Guide**: Built-in emergency procedures (CPR, Bleeding, Burns, etc.) accessible without an internet connection.
-- **Emergency Contacts**: Quick-call contacts stored locally on the device.
-- **Push Notifications**: Real-time alerts for nearby incidents and status updates (gracefully degrades in Expo Go).
-
-### Web Dashboard (Next.js)
-- **Centralized Dispatch**: View and manage all incoming emergency reports.
-- **Interactive Mapping**: Real-time incident tracking using Leaflet.js.
-- **Analytics & Status**: Monitor active, pending, and resolved incidents.
-
-### Backend API (Node.js / Express)
-- **Real-Time Sync**: Bi-directional communication using Socket.io.
-- **Role-Based Access Control (RBAC)**: Distinct permissions for Citizens, Volunteers, and Admins via middleware.
-- **Secure Authentication**: JWT-based authentication flow with token rotation and rate-limiting.
-- **Geospatial Capabilities**: Haversine distance calculations and location-based filtering via MongoDB `2dsphere` indexes.
+Originally developed as **ResQNet**, GuardianX expands the concept into a complete Smart City solution powered by Artificial Intelligence, Real-Time Communication, Geospatial Services, and Predictive Analytics.
 
 ---
 
-## 🛠️ Technology Stack
+# 🌍 Sustainable Development Goals (SDGs)
 
-| Component | Technologies |
-| :--- | :--- |
-| **Mobile App** | React Native, Expo, TypeScript, React Navigation, Socket.io-client, React Native Maps, Expo Notifications |
-| **Web Frontend** | Next.js 14, React, Tailwind CSS, Leaflet.js |
-| **Backend API** | Node.js, Express, MongoDB, Mongoose, Socket.io, JWT, Zod, Helmet |
+GuardianX contributes to:
 
----
-
-## 🏗️ Architecture Overview
-
-ResQNet utilizes a decoupled architecture:
-1. **Node.js/Express Backend**: Acts as the central source of truth. It exposes a RESTful API (`/api/v1`) for authentication, incident management, and data retrieval, alongside a Socket.io server for real-time event broadcasting.
-2. **Next.js Dashboard**: A web portal for dispatchers and admins. It consumes the REST API and listens to WebSocket events to maintain a real-time live map and incident queue.
-3. **React Native Mobile App**: A mobile interface for citizens to report emergencies and for responders to receive tasks. It features offline queuing (via `AsyncStorage`) that automatically flushes to the backend REST API when connectivity is restored.
+- ❤️ SDG 3 – Good Health & Well-being
+- 🏗 SDG 9 – Industry, Innovation & Infrastructure
+- 🏙 SDG 11 – Sustainable Cities & Communities
+- 🌱 SDG 13 – Climate Action
+- ⚖ SDG 16 – Peace, Justice & Strong Institutions
 
 ---
 
-## 📋 Folder Structure
+# 📌 Problem Statement
 
-```text
-ResQNet/
-├── mobile/                  # React Native (Expo) Mobile Application
-│   ├── src/
-│   │   ├── components/      # Reusable UI (SOSButton, IncidentMap, etc.)
-│   │   ├── navigation/      # 3-Tab Bottom Nav + Stack Navigator
-│   │   ├── screens/         # Auth, Home, Emergency, Profile, First Aid
-│   │   └── services/        # API Axios instance, Socket setup, Notifications
-│   └── app.json             # Expo configuration and permissions
-│
-├── frontend/                # Next.js Web Dashboard
-│   ├── app/                 # App Router pages
-│   ├── components/          # Web UI components
-│   └── lib/                 # Utility functions and API clients
-│
-└── backend/                 # Node.js REST API & WebSocket Server
-    ├── src/
-    │   ├── controllers/     # Request handlers (auth, incidents)
-    │   ├── models/          # Mongoose schemas (User, Incident, etc.)
-    │   ├── routes/          # Express route definitions
-    │   ├── middleware/      # RBAC, JWT validation, Zod validation
-    │   └── socket/          # Socket.io event handlers
-    └── server.ts            # Entry point (binds to 0.0.0.0 for mobile access)
+Cities face two major challenges:
+
+### 🚨 Emergency Response
+
+- Road Accidents
+- Medical Emergencies
+- Fire Incidents
+- Floods
+- Missing Persons
+- Natural Disasters
+
+Emergency reporting is often delayed due to poor communication and lack of coordination.
+
+---
+
+### 🏙 Civic Issues
+
+Citizens struggle to report:
+
+- Potholes
+- Garbage Overflow
+- Water Leakage
+- Broken Streetlights
+- Illegal Dumping
+- Damaged Roads
+- Sewage Problems
+- Fallen Trees
+
+Most complaints remain unresolved because reporting systems are fragmented and lack transparency.
+
+---
+
+GuardianX solves both problems through a unified AI-powered platform.
+
+---
+
+# 🚀 Key Features
+
+## 🚨 Emergency Response Module
+
+- SOS Emergency Button
+- Live GPS Sharing
+- Medical Emergency Reporting
+- Fire Reporting
+- Road Accident Reporting
+- Flood Reporting
+- Missing Person Reporting
+- Offline Emergency Reporting
+- First Aid Guide
+- Emergency Contacts
+- Incident Timeline
+- Live Status Tracking
+- Nearby Hospital Finder
+- Nearby Shelter Finder
+
+---
+
+## 🏙 CivicMind Module
+
+Citizens can report:
+
+- Potholes
+- Garbage Overflow
+- Broken Streetlights
+- Water Leakage
+- Illegal Dumping
+- Sewage Problems
+- Damaged Roads
+- Fallen Trees
+- Traffic Signal Failure
+- Public Property Damage
+
+Each report includes:
+
+- GPS Location
+- Images
+- Description
+- Priority
+- Status
+- Timeline
+- Assigned Department
+
+---
+
+# 🤖 AI Features
+
+## AI Vision
+
+Users simply upload a photo.
+
+GuardianX automatically detects:
+
+### Emergency
+
+- Fire
+- Road Accident
+- Flood
+
+### Civic
+
+- Garbage
+- Pothole
+- Water Leakage
+- Fallen Tree
+- Broken Streetlight
+- Road Blockage
+
+Powered by:
+
+- YOLO
+- OpenCV
+
+---
+
+## AI Severity Prediction
+
+Automatically predicts incident priority.
+
+Example:
+
+| Incident | Priority |
+|------------|------------|
+| Fire | Critical |
+| Major Accident | High |
+| Flood | Critical |
+| Garbage | Medium |
+| Small Pothole | Low |
+
+---
+
+## Smart Routing Engine
+
+Automatically forwards incidents to:
+
+- Fire Department
+- Ambulance
+- Police
+- Municipal Corporation
+- Water Department
+- Electricity Department
+- Disaster Management
+
+---
+
+## AI Chat Assistant
+
+Citizens can ask:
+
+- Where is my complaint?
+- Where is the nearest hospital?
+- CPR instructions
+- Flood safety
+
+Officials can ask:
+
+- Show unresolved incidents
+- Show critical reports
+- Show today's emergencies
+- Display hotspot areas
+
+Future Ready:
+
+- Gemini
+- OpenAI
+- Llama
+- LangChain
+- LangGraph
+
+---
+
+# 🌪 Disaster Intelligence
+
+Supports:
+
+- Weather Alerts
+- Flood Alerts
+- Cyclone Alerts
+- Earthquake Alerts
+- Heatwave Alerts
+
+Citizens receive proactive notifications.
+
+---
+
+# 🤝 Volunteer Network
+
+Volunteers can:
+
+- Accept Missions
+- Reject Missions
+- Share Live GPS
+- Upload Rescue Progress
+- Complete Rescue Missions
+- Track History
+- Earn Contribution Points
+
+---
+
+# 🏛 Government Command Center
+
+The web dashboard provides:
+
+- Live Incident Map
+- Civic Complaint Map
+- Emergency Queue
+- Department Queue
+- Volunteer Tracking
+- Analytics
+- Response Time
+- Heatmaps
+- Incident Timeline
+- Department Performance
+- Citizen Feedback
+- Disaster Alerts
+
+---
+
+# 👥 User Roles
+
+## 👤 Citizen
+
+- Report Emergencies
+- Report Civic Issues
+- SOS
+- View Reports
+- AI Assistant
+- Notifications
+- Profile
+- First Aid Guide
+
+---
+
+## 🚑 Volunteer
+
+Everything a Citizen can do plus:
+
+- Accept Missions
+- Live Tracking
+- Mission Updates
+- Rescue Progress
+- Mission History
+
+---
+
+## 🏢 Department Admin
+
+- Manage Incidents
+- Manage Civic Complaints
+- Assign Volunteers
+- Analytics
+- Heatmaps
+- Live Dashboard
+
+---
+
+## ⚙ Super Admin
+
+- User Management
+- Department Management
+- System Settings
+- AI Settings
+- Full Analytics
+- Audit Logs
+
+---
+
+# 📱 Mobile Application
+
+Built using:
+
+- React Native
+- Expo
+- TypeScript
+
+Features:
+
+- Bottom Navigation
+- SOS
+- Live Maps
+- Notifications
+- Offline Mode
+- AI Reporting
+- Civic Reporting
+- Profile
+- Mission Tracking
+
+---
+
+# 💻 Web Dashboard
+
+Built using:
+
+- Next.js
+- React
+- Tailwind CSS
+
+Features:
+
+- Smart City Dashboard
+- Interactive Maps
+- Charts
+- Department Analytics
+- Incident Queue
+- Volunteer Management
+- User Management
+
+---
+
+# ⚙ Backend
+
+Built using:
+
+- Node.js
+- Express.js
+- MongoDB
+- Socket.io
+
+Features:
+
+- JWT Authentication
+- Role Based Access
+- REST API
+- WebSockets
+- File Upload
+- AI Services
+- Notification Service
+
+---
+
+# 🛠 Tech Stack
+
+## Mobile
+
+- React Native
+- Expo
+- TypeScript
+- React Navigation
+- React Native Maps
+
+## Web
+
+- Next.js
+- React
+- Tailwind CSS
+
+## Backend
+
+- Node.js
+- Express.js
+- Socket.io
+- JWT
+- Zod
+
+## Database
+
+- MongoDB
+- Redis (Caching)
+
+## AI
+
+- YOLO
+- OpenCV
+- Gemini
+- LangChain
+- LangGraph
+
+## Maps
+
+- OpenStreetMap
+- Leaflet
+- Google Maps API
+
+## Notifications
+
+- Firebase Cloud Messaging
+
+## Storage
+
+- AWS S3
+- MinIO
+
+## DevOps
+
+- Docker
+- BullMQ
+- GitHub Actions
+
+---
+
+# 🏗 System Architecture
+
+```
+Citizen Mobile App
+        │
+        ▼
+ REST API + Socket.io
+        │
+        ▼
+ AI Vision Service
+        │
+        ▼
+ Severity Prediction
+        │
+        ▼
+ Smart Routing Engine
+        │
+        ▼
+ Government Dashboard
+        │
+        ▼
+ Department Admin
+        │
+        ▼
+ Volunteers / Responders
+        │
+        ▼
+ Citizen Notifications
 ```
 
 ---
 
-## 🚀 Installation & Local Setup
+# 📂 Project Structure
 
-### Prerequisites
-- Node.js (v18+)
-- MongoDB running locally or a MongoDB Atlas URI
-- Expo CLI (`npm install -g expo-cli`)
-- A physical mobile device (recommended) or simulator for testing
+```
+GuardianX
+│
+├── mobile
+│   ├── src
+│   │   ├── components
+│   │   ├── screens
+│   │   ├── navigation
+│   │   ├── hooks
+│   │   ├── services
+│   │   ├── context
+│   │   ├── store
+│   │   ├── utils
+│   │   └── assets
+│
+├── frontend
+│   ├── app
+│   ├── components
+│   ├── hooks
+│   ├── services
+│   ├── lib
+│   └── styles
+│
+├── backend
+│   ├── controllers
+│   ├── routes
+│   ├── middleware
+│   ├── services
+│   ├── repositories
+│   ├── socket
+│   ├── models
+│   ├── config
+│   ├── utils
+│   └── ai
+│
+└── docs
+```
 
-### 1. Backend Setup
+---
+
+# 🔄 Workflow
+
+```
+Citizen
+
+↓
+
+Login
+
+↓
+
+Emergency / Civic Report
+
+↓
+
+Photo + GPS + Description
+
+↓
+
+AI Classification
+
+↓
+
+Severity Prediction
+
+↓
+
+Department Assignment
+
+↓
+
+Real-Time Socket.io
+
+↓
+
+Dashboard Update
+
+↓
+
+Volunteer Notification
+
+↓
+
+Department Action
+
+↓
+
+Status Updates
+
+↓
+
+Citizen Notification
+
+↓
+
+Analytics
+```
+
+---
+
+# 🔐 Security
+
+- JWT Authentication
+- Refresh Tokens
+- Role Based Access Control
+- Protected APIs
+- Rate Limiting
+- Helmet
+- Input Validation
+- Password Hashing
+- Audit Logs
+- Secure File Upload
+
+---
+
+# 📊 Analytics
+
+- Incident Trends
+- Civic Trends
+- Department Performance
+- Volunteer Performance
+- Response Time
+- Heatmaps
+- Monthly Reports
+- Export Reports
+
+---
+
+# 🚀 Future Scope
+
+- Drone Integration
+- AI Flood Prediction
+- Satellite Image Analysis
+- IoT Sensors
+- Air Quality Monitoring
+- Smart Ambulance Routing
+- Digital Twin
+- Voice Reporting
+- Regional Language Support
+- Offline Mesh Networking
+
+---
+
+# 📦 Installation
+
+## Backend
+
 ```bash
 cd backend
 npm install
-```
-Create a `.env` file in the `backend` directory:
-```env
-PORT=5001
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/resqnet?retryWrites=true&w=majority
-JWT_SECRET=your_super_secret_key
-JWT_EXPIRES_IN=24h
-CLIENT_URL=http://localhost:3000
-```
-Start the backend server:
-```bash
 npm run dev
-# The server runs on http://0.0.0.0:5001 to allow mobile devices on the same WiFi to connect.
 ```
 
-### 2. Web Frontend Setup
+## Frontend
+
 ```bash
 cd frontend
 npm install
-```
-Create a `.env.local` file in the `frontend` directory:
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
-NEXT_PUBLIC_SOCKET_URL=http://localhost:5001
-```
-Start the Next.js app:
-```bash
 npm run dev
-# Available at http://localhost:3000
 ```
 
-### 3. Mobile App Setup
+## Mobile
+
 ```bash
 cd mobile
 npm install
+npx expo start
 ```
-Create a `.env` file in the `mobile` directory. **Important:** Replace `192.168.1.5` with your computer's actual local IP address so the physical device can reach the backend.
-```env
-EXPO_PUBLIC_API_URL=http://192.168.1.5:5001/api/v1
-EXPO_PUBLIC_SOCKET_URL=http://192.168.1.5:5001
-```
-Start the Expo development server:
+
+---
+
+# 🧪 Testing
+
 ```bash
-npx expo start --clear
-```
-Scan the QR code with the Expo Go app on your phone, or press `i`/`a` to open in a simulator.
-
-*Note: Push notifications require a physical device and a development build (`npx expo run:android` or `npx expo run:ios`). Expo Go gracefully degrades this feature.*
-
----
-
-## 🚢 Production Deployment
-
-### Frontend (Next.js) - To Vercel
-1. Push code to GitHub
-2. Connect GitHub repo to Vercel
-3. Set the root directory to `frontend`
-4. Set up environment variables (`NEXT_PUBLIC_API_URL`, etc.)
-5. Deploy with one click.
-
-### Docker (Local deployment example)
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /frontend/app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
+npm run test
 ```
 
 ---
 
-## 🧪 Testing
+# 📸 Screenshots
 
-For comprehensive testing guides covering the frontend, backend, accessibility, and offline modes, please refer to the **[TESTING.md](./TESTING.md)** file.
+Add screenshots here:
+
+- Login
+- Home
+- SOS
+- Report Emergency
+- Report Civic Issue
+- AI Detection
+- Live Map
+- Dashboard
+- Analytics
 
 ---
 
-## 🤝 Future Enhancements
-- Integration with external dispatch services (e.g., 911/112 APIs).
-- Media uploads (photos/videos) attached to incident reports.
-- Advanced AI severity prediction utilizing NLP on incident descriptions.
-- WebRTC video streaming from the emergency scene to the dispatch center.
+# 🤝 Contributing
+
+Contributions are welcome.
+
+1. Fork the repository
+
+2. Create a feature branch
+
+3. Commit changes
+
+4. Push the branch
+
+5. Open a Pull Request
 
 ---
-*Built for rapid response and reliable communication during crises.*
+
+# 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+# 👨💻 Developed By
+
+**Siddhivinayak Sawant**
+
+GuardianX — AI-Powered Smart City Emergency & Civic Intelligence Platform
+
+Built with ❤️ using React Native, Next.js, Node.js, MongoDB, AI, and Real-Time Technologies.

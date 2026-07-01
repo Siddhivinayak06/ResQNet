@@ -5,7 +5,7 @@ import { protect, authorize } from '../middleware/auth.js';
 const router = Router();
 
 router.route('/')
-  .post(protect, authorize('admin', 'hospital'), createVehicle)
+  .post(protect, authorize('department_admin', 'super_admin'), createVehicle)
   .get(protect, getVehicles);
 
 router.route('/:id')

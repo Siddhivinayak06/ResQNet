@@ -1,33 +1,47 @@
 import { io, Socket } from 'socket.io-client';
 import { API_BASE_URL } from './api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncQueuedReports } from '../utils/offlineQueue';
 
 // ─── Types ───────────────────────────────────────────────────
 export type SocketIncidentPayload = any;
+export type SocketCivicPayload = any;
+export type SocketLocationPayload = any;
 
 type IncidentHandler = (data: SocketIncidentPayload) => void;
+type CivicHandler = (data: SocketCivicPayload) => void;
+type LocationHandler = (data: SocketLocationPayload) => void;
 
 // ─── Singleton Socket Manager ────────────────────────────────
 class SocketService {
   private socket: Socket | null = null;
   private newIncidentHandlers: IncidentHandler[] = [];
   private updatedIncidentHandlers: IncidentHandler[] = [];
+  private newCivicHandlers: CivicHandler[] = [];
+  private updatedCivicHandlers: CivicHandler[] = [];
+  private locationHandlers: LocationHandler[] = [];
 
   /** Connect to the backend Socket.io server. */
-  connect(): void {
+  async connect(): Promise<void> {
     if (this.socket?.connected) return;
 
     const SOCKET_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+    const token = await AsyncStorage.getItem('token');
 
     this.socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity, // keep trying to reconnect
       reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
       timeout: 10000,
+      auth: token ? { token } : {},
     });
 
     this.socket.on('connect', () => {
       console.log('🔌 Socket connected:', this.socket?.id);
+      // Optimistic offline recovery: sync pending offline reports once reconnected
+      syncQueuedReports().catch(console.error);
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -46,6 +60,18 @@ class SocketService {
     this.socket.on('incidentUpdated', (data: SocketIncidentPayload) => {
       this.updatedIncidentHandlers.forEach((h) => h(data));
     });
+
+    this.socket.on('newCivicIssue', (data: SocketCivicPayload) => {
+      this.newCivicHandlers.forEach((h) => h(data));
+    });
+
+    this.socket.on('civicIssueUpdated', (data: SocketCivicPayload) => {
+      this.updatedCivicHandlers.forEach((h) => h(data));
+    });
+
+    this.socket.on('locationUpdate', (data: SocketLocationPayload) => {
+      this.locationHandlers.forEach((h) => h(data));
+    });
   }
 
   /** Disconnect from the server. */
@@ -54,37 +80,52 @@ class SocketService {
     this.socket = null;
   }
 
-  /** Register a handler for new incidents. Returns an unsubscribe function. */
+  // ─── Handlers ──────────────────────────────────────────────
+
   onNewIncident(handler: IncidentHandler): () => void {
     this.newIncidentHandlers.push(handler);
-    return () => {
-      this.newIncidentHandlers = this.newIncidentHandlers.filter((h) => h !== handler);
-    };
+    return () => { this.newIncidentHandlers = this.newIncidentHandlers.filter((h) => h !== handler); };
   }
 
-  /** Register a handler for updated incidents. Returns an unsubscribe function. */
   onIncidentUpdated(handler: IncidentHandler): () => void {
     this.updatedIncidentHandlers.push(handler);
-    return () => {
-      this.updatedIncidentHandlers = this.updatedIncidentHandlers.filter((h) => h !== handler);
-    };
+    return () => { this.updatedIncidentHandlers = this.updatedIncidentHandlers.filter((h) => h !== handler); };
   }
 
-  /** Subscribe to updates for a specific incident. */
+  onNewCivicIssue(handler: CivicHandler): () => void {
+    this.newCivicHandlers.push(handler);
+    return () => { this.newCivicHandlers = this.newCivicHandlers.filter((h) => h !== handler); };
+  }
+
+  onCivicIssueUpdated(handler: CivicHandler): () => void {
+    this.updatedCivicHandlers.push(handler);
+    return () => { this.updatedCivicHandlers = this.updatedCivicHandlers.filter((h) => h !== handler); };
+  }
+
+  onLocationUpdate(handler: LocationHandler): () => void {
+    this.locationHandlers.push(handler);
+    return () => { this.locationHandlers = this.locationHandlers.filter((h) => h !== handler); };
+  }
+
+  // ─── Emitters ──────────────────────────────────────────────
+
   subscribeToIncident(incidentId: string): void {
     this.socket?.emit('subscribeIncident', incidentId);
   }
 
-  /** Unsubscribe from a specific incident. */
   unsubscribeFromIncident(incidentId: string): void {
     this.socket?.emit('unsubscribeIncident', incidentId);
   }
+  
+  updateLocation(latitude: number, longitude: number): void {
+    if (this.isConnected) {
+      this.socket?.emit('updateLocation', { latitude, longitude });
+    }
+  }
 
-  /** Check if currently connected. */
   get isConnected(): boolean {
     return this.socket?.connected ?? false;
   }
 }
 
-// Export singleton
 export const socketService = new SocketService();

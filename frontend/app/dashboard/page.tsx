@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/dashboard-layout';
 import { useAuth } from '@/lib/auth-context';
 import CitizenDashboard from '@/components/dashboards/citizen-dashboard';
-import ResponderDashboard from '@/components/dashboards/responder-dashboard';
-import HospitalDashboard from '@/components/dashboards/hospital-dashboard';
-import AdminDashboard from '@/components/dashboards/admin-dashboard';
+import VolunteerDashboard from '@/components/dashboards/volunteer-dashboard';
+import DepartmentDashboard from '@/components/dashboards/department-admin-dashboard';
+import SuperAdminDashboard from '@/components/dashboards/super-admin-dashboard';
 import { Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api-client';
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, token, logout, isLoading: authLoading } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
+  const [civicIssues, setCivicIssues] = useState<any[]>([]);
   const [responders, setResponders] = useState<Responder[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,20 +51,24 @@ export default function DashboardPage() {
     }
 
     try {
-      const [reportsRes, respondersRes, hospitalsRes] = await Promise.all([
+      const [reportsRes, civicRes, respondersRes, hospitalsRes] = await Promise.all([
         apiFetch('/incidents', { token }),
+        apiFetch('/civic-issues', { token }),
         apiFetch('/volunteers', { token }), // Or /responders if implemented, but /volunteers matches the backend plan
         apiFetch('/hospitals', { token }),
       ]);
 
       if (reportsRes.ok) {
-        setReports(await reportsRes.json());
+        setReports((await reportsRes.json()).data || []);
+      }
+      if (civicRes.ok) {
+        setCivicIssues((await civicRes.json()).data || []);
       }
       if (respondersRes.ok) {
-        setResponders(await respondersRes.json());
+        setResponders((await respondersRes.json()).data || []);
       }
       if (hospitalsRes.ok) {
-        setHospitals(await hospitalsRes.json());
+        setHospitals((await hospitalsRes.json()).data || []);
       }
       setError(null);
     } catch (err) {
@@ -155,11 +160,13 @@ export default function DashboardPage() {
   const getDashboardTitle = () => {
     switch (user.role) {
       case 'citizen':
-        return 'My Emergency Reports';
+        return 'My Reports';
       case 'volunteer':
-        return 'Active Emergencies';
-      case 'admin':
-        return 'System Administration';
+        return 'Active Missions';
+      case 'department_admin':
+        return 'Department Dashboard';
+      case 'super_admin':
+        return 'Super Admin Dashboard';
       default:
         return 'Emergency Dashboard';
     }
@@ -168,20 +175,22 @@ export default function DashboardPage() {
   const renderDashboard = () => {
     switch (user.role) {
       case 'citizen':
-        return <CitizenDashboard reports={reports} loading={loading} />;
+        return <CitizenDashboard reports={reports} civicIssues={civicIssues} loading={loading} />;
       case 'volunteer':
         return (
-          <ResponderDashboard
+          <VolunteerDashboard
             reports={reports}
             responders={responders}
             loading={loading}
             onAcceptReport={handleAcceptReport}
           />
         );
-      case 'admin':
-        return <AdminDashboard reports={reports} responders={responders} hospitals={hospitals} loading={loading} />;
+      case 'department_admin':
+        return <DepartmentDashboard reports={reports} civicIssues={civicIssues} hospitals={hospitals} loading={loading} />;
+      case 'super_admin':
+        return <SuperAdminDashboard reports={reports} responders={responders} hospitals={hospitals} loading={loading} />;
       default:
-        return <CitizenDashboard reports={reports} loading={loading} />;
+        return <CitizenDashboard reports={reports} civicIssues={civicIssues} loading={loading} />;
     }
   };
 

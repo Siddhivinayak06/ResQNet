@@ -248,7 +248,7 @@ export default function AdminDashboard({
     { value: 'all', label: 'All statuses' },
     { value: 'open', label: 'Open' },
     { value: 'assigned', label: 'Assigned' },
-    { value: 'in-progress', label: 'In progress' },
+    { value: 'in_progress', label: 'In progress' },
     { value: 'resolved', label: 'Resolved' },
   ];
 
@@ -260,7 +260,7 @@ export default function AdminDashboard({
       color:
         option.value === 'resolved'
           ? '#22c55e'
-          : option.value === 'in-progress'
+          : option.value === 'in_progress'
             ? '#f59e0b'
             : option.value === 'assigned'
               ? '#38bdf8'
@@ -552,7 +552,7 @@ export default function AdminDashboard({
                             className={`border-slate-600 text-slate-200 ${
                               report.status === 'resolved'
                                 ? 'bg-emerald-500/10 text-emerald-300'
-                                : report.status === 'in-progress'
+                                : report.status === 'in_progress'
                                   ? 'bg-amber-500/10 text-amber-300'
                                   : report.status === 'assigned'
                                     ? 'bg-sky-500/10 text-sky-300'

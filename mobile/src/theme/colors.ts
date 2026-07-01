@@ -39,6 +39,10 @@ export const colors = {
   danger: '#ef4444',
   info: '#3b82f6',
   purple: '#8b5cf6',
+  blue400: '#60a5fa',
+  blue500: '#3b82f6',
+  blue600: '#2563eb',
+  amber500: '#f59e0b',
 
   // ─── Status colors ────────────────────────
   statusPending: '#f59e0b',

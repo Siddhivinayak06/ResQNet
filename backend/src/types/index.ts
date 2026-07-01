@@ -11,12 +11,8 @@ import type { Types } from 'mongoose';
 /** All supported user roles in the platform */
 export type UserRole =
   | 'citizen'
-  | 'responder'
   | 'volunteer'
-  | 'admin'
-  | 'hospital_admin'
-  | 'police_admin'
-  | 'fire_admin'
+  | 'department_admin'
   | 'super_admin';
 
 /** Device registration for push notifications */
@@ -90,6 +86,42 @@ export type IncidentStatus =
   | 'false_alarm';
 
 export type IncidentSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+// ─── Civic Issues ────────────────────────────────────────────
+
+export type CivicIssueCategory =
+  | 'pothole'
+  | 'garbage'
+  | 'streetlight'
+  | 'water_leakage'
+  | 'sewage'
+  | 'illegal_dumping'
+  | 'damaged_road'
+  | 'fallen_tree'
+  | 'traffic_signal'
+  | 'property_damage'
+  | 'other';
+
+export type CivicIssueStatus =
+  | 'reported'
+  | 'under_review'
+  | 'assigned'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed';
+
+// ─── Departments ─────────────────────────────────────────────
+
+export type DepartmentType =
+  | 'police'
+  | 'fire'
+  | 'medical'
+  | 'water'
+  | 'electricity'
+  | 'municipal'
+  | 'traffic'
+  | 'forest'
+  | 'other';
 
 /** Single entry in an incident's timeline */
 export interface TimelineEntry {
@@ -252,6 +284,8 @@ export interface ServerToClientEvents {
   newIncident: (data: Record<string, unknown>) => void;
   incidentUpdated: (data: Record<string, unknown>) => void;
   incidentAssigned: (data: Record<string, unknown>) => void;
+  newCivicIssue: (data: Record<string, unknown>) => void;
+  civicIssueUpdated: (data: Record<string, unknown>) => void;
   message: (data: Record<string, unknown>) => void;
   typing: (data: { userId: string; incidentId: string }) => void;
   locationUpdate: (data: { userId: string; location: GeoPoint; timestamp: Date }) => void;

@@ -28,7 +28,7 @@ router.get('/:id', validate({ params: idParamSchema }), getHospitalById);
 router.post(
   '/',
   protect,
-  authorize('admin', 'super_admin'),
+  authorize('department_admin', 'super_admin'),
   validate({ body: createHospitalSchema }),
   createHospital,
 );
@@ -37,7 +37,7 @@ router.post(
 router.patch(
   '/:id/beds',
   protect,
-  authorize('hospital_admin', 'admin', 'super_admin'),
+  authorize('department_admin', 'super_admin'),
   validate({ params: idParamSchema, body: updateBedsSchema }),
   updateBeds,
 );
@@ -45,7 +45,7 @@ router.patch(
 router.patch(
   '/:id/blood',
   protect,
-  authorize('hospital_admin', 'admin', 'super_admin'),
+  authorize('department_admin', 'super_admin'),
   validate({ params: idParamSchema }),
   updateBloodBank,
 );
@@ -53,7 +53,7 @@ router.patch(
 router.post(
   '/:id/queue',
   protect,
-  authorize('hospital_admin', 'responder', 'admin', 'super_admin'),
+  authorize('department_admin', 'volunteer', 'super_admin'),
   validate({ params: idParamSchema }),
   addToQueue,
 );

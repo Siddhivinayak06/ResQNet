@@ -8,13 +8,16 @@ import {
   Pressable,
   Alert,
   StyleSheet,
-  Dimensions,
+  TextInput,
+  ScrollView,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { incidentService, Incident, mapIncident } from '../../services/incidentService';
+import { civicIssueService, CivicIssue } from '../../services/civicIssueService';
 import { ApiError } from '../../services/api';
 import { socketService, SocketIncidentPayload } from '../../services/socket';
 import { getCurrentLocation, LocationData } from '../../utils/location';
@@ -96,6 +99,7 @@ const skStyles = StyleSheet.create({
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [civicIssues, setCivicIssues] = useState<CivicIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,12 +107,22 @@ export default function HomeScreen({ navigation }: Props) {
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [showMap, setShowMap] = useState(true);
+  
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<string>('All');
+
+  const CATEGORIES = ['All', 'Accident', 'Fire', 'Medical', 'Disaster', 'Crime', 'Hazmat', 'Rescue', 'Other'];
 
   const fetchIncidents = useCallback(async () => {
     try {
       setError(null);
-      const data = await incidentService.getIncidents();
-      setIncidents(data);
+      const [incidentsData, civicData] = await Promise.all([
+        incidentService.getIncidents(),
+        civicIssueService.getCivicIssues()
+      ]);
+      setIncidents(incidentsData);
+      setCivicIssues(civicData);
     } catch (err) {
       if (err instanceof ApiError) setError(err.code === 'NETWORK_ERROR' ? 'Cannot reach server.' : err.message);
       else setError('Failed to load incidents.');
@@ -161,8 +175,15 @@ export default function HomeScreen({ navigation }: Props) {
     fetchIncidents();
   };
 
-  const activeCount = incidents.filter((i) => i.status === 'active').length;
+  const activeCount = incidents.filter((i) => ['verified', 'assigned', 'in_progress'].includes(i.status)).length;
   const pendingCount = incidents.filter((i) => i.status === 'pending').length;
+
+  const filteredIncidents = incidents.filter(i => {
+    const matchesSearch = i.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          i.incidentType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = activeFilter === 'All' || i.incidentType.toLowerCase() === activeFilter.toLowerCase();
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <SafeAreaView style={shared.screen}>
@@ -180,7 +201,12 @@ export default function HomeScreen({ navigation }: Props) {
       <FadeInView delay={100}>
         {showMap && (
           <View style={styles.mapContainer}>
-            <IncidentMap incidents={incidents} userLocation={userLocation} onMarkerPress={setSelectedIncident} />
+            <IncidentMap 
+              incidents={incidents} 
+              civicIssues={civicIssues}
+              userLocation={userLocation} 
+              onMarkerPress={setSelectedIncident} 
+            />
           </View>
         )}
 
@@ -200,9 +226,31 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       </FadeInView>
 
+      <FadeInView delay={150} style={styles.filterSection}>
+        <TextInput 
+          style={styles.searchInput}
+          placeholder="Search incidents..."
+          placeholderTextColor={colors.dark400}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+          {CATEGORIES.map(cat => (
+            <TouchableOpacity 
+              key={cat} 
+              onPress={() => setActiveFilter(cat)}
+              style={[styles.filterChip, activeFilter === cat && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterText, activeFilter === cat && styles.filterTextActive]}>{cat}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </FadeInView>
+
       <View style={styles.quickRow}>
         <QuickActionCard emoji="🚨" label="Report" onPress={() => navigation.navigate('RequestHelp')} delay={200} />
-        <QuickActionCard emoji="🏥" label="First Aid" onPress={() => navigation.navigate('FirstAid')} delay={250} />
+        <QuickActionCard emoji="🏙️" label="Civic" onPress={() => navigation.navigate('ReportCivicIssue')} delay={230} />
+        <QuickActionCard emoji="🏥" label="First Aid" onPress={() => navigation.navigate('FirstAid')} delay={260} />
         <QuickActionCard emoji="📞" label="Contacts" onPress={() => navigation.navigate('EmergencyContacts')} delay={300} />
       </View>
 
@@ -239,7 +287,7 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       ) : (
         <FlatList
-          data={incidents}
+          data={filteredIncidents}
           keyExtractor={(item) => item._id}
           renderItem={({ item, index }) => (
             <FadeInView delay={450 + index * 50}>
@@ -314,6 +362,31 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
   },
   quickLabel: { color: colors.white, fontSize: 12, fontWeight: '600' },
+
+  filterSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  searchInput: {
+    backgroundColor: colors.dark900,
+    color: colors.white,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.dark800,
+    marginBottom: spacing.sm,
+  },
+  filterScroll: { marginBottom: spacing.xs },
+  filterContent: { gap: spacing.xs },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.dark800,
+    borderWidth: 1,
+    borderColor: colors.dark700,
+  },
+  filterChipActive: { backgroundColor: colors.primary500, borderColor: colors.primary400 },
+  filterText: { color: colors.dark200, fontSize: 12, fontWeight: '600' },
+  filterTextActive: { color: colors.white },
 
   floatingSOS: { position: 'absolute', bottom: 24, alignSelf: 'center' },
 

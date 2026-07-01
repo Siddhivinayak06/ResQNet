@@ -112,7 +112,7 @@ export async function syncOfflineIncidents(token?: string | null): Promise<void>
 
   for (const report of unsynced) {
     try {
-      const response = await apiFetch('/api/incidents', {
+      const response = await apiFetch('/incidents', {
         method: 'POST',
         body: JSON.stringify({
           incidentType: report.incidentType,

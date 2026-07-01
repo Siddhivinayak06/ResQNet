@@ -21,8 +21,12 @@ export function incidentTypeLabel(type: string): string {
     fire: '🔥 Fire',
     medical: '🏥 Medical',
     disaster: '🌊 Disaster',
+    crime: '👮 Crime',
+    hazmat: '☣️ Hazmat',
+    rescue: '🚁 Rescue',
+    other: '⚠️ Other',
   };
-  return labels[type] || type;
+  return labels[type] || type.toUpperCase();
 }
 
 /**
@@ -31,10 +35,27 @@ export function incidentTypeLabel(type: string): string {
 export function statusColor(status: string): string {
   const colors: Record<string, string> = {
     pending: '#f59e0b',
-    active: '#ef4444',
+    verified: '#3b82f6',
+    assigned: '#8b5cf6',
+    in_progress: '#ef4444',
     resolved: '#22c55e',
+    closed: '#64748b',
+    false_alarm: '#94a3b8',
   };
   return colors[status] || '#94a3b8';
+}
+
+/**
+ * Get a color for incident severity.
+ */
+export function getSeverityColor(severity: string): string {
+  const colors: Record<string, string> = {
+    critical: '#dc2626',
+    high: '#ea580c',
+    medium: '#eab308',
+    low: '#3b82f6',
+  };
+  return colors[severity] || '#64748b';
 }
 
 /**

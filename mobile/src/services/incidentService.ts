@@ -3,8 +3,9 @@ import { queueIncident } from './db';
 import NetInfo from '@react-native-community/netinfo';
 
 // ─── Types ───────────────────────────────────────────────────
-export type IncidentType = 'accident' | 'fire' | 'medical' | 'disaster';
-export type IncidentStatus = 'pending' | 'active' | 'resolved';
+export type IncidentType = 'accident' | 'fire' | 'medical' | 'disaster' | 'crime' | 'hazmat' | 'rescue' | 'other';
+export type IncidentStatus = 'pending' | 'verified' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'false_alarm';
+export type IncidentSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 export interface Incident {
   _id: string;
@@ -13,9 +14,14 @@ export interface Incident {
   latitude: number;
   longitude: number;
   imageUrl?: string;
+  severity?: IncidentSeverity;
+  tags?: string[];
   status: IncidentStatus;
   reportedAt: string;
-  reporterId?: string;
+  reporterId?: any; // To allow populated object or string
+  assignedResponders?: any[];
+  assignedVehicles?: any[];
+  timeline?: any[];
   isOffline?: boolean;
 }
 
@@ -24,6 +30,9 @@ export interface CreateIncidentPayload {
   description: string;
   latitude: number;
   longitude: number;
+  severity?: IncidentSeverity;
+  imageUrl?: string;
+  tags?: string[];
 }
 
 interface IncidentListResponse {

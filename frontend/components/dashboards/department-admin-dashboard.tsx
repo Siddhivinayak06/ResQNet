@@ -4,19 +4,42 @@ import { Button } from '@/components/ui/button';
 
 interface HospitalDashboardProps {
   reports: Report[];
+  civicIssues?: any[];
   hospitals: Hospital[];
   loading: boolean;
 }
 
-export default function HospitalDashboard({ reports, hospitals, loading }: HospitalDashboardProps) {
-  const incomingPatients = reports.filter(r => r.status === 'in-progress' && r.assignedToHospital).length;
+import { useState } from 'react';
+
+export default function HospitalDashboard({ reports, civicIssues = [], hospitals, loading }: HospitalDashboardProps) {
+  const [activeTab, setActiveTab] = useState<'emergencies' | 'civic'>('emergencies');
+
+  const incomingPatients = reports.filter(r => r.status === 'in_progress' && r.assignedToHospital).length;
   const totalCapacity = hospitals.reduce((sum, h) => sum + h.emergencyCapacity, 0);
   const currentPatients = hospitals.reduce((sum, h) => sum + h.currentPatients, 0);
   const availableBeds = totalCapacity - currentPatients;
 
   return (
     <div className="space-y-8">
-      {/* Hospital Stats */}
+      {/* Tabs */}
+      <div className="flex border-b border-slate-700">
+        <button 
+          onClick={() => setActiveTab('emergencies')}
+          className={`px-4 py-2 font-semibold text-sm transition-colors ${activeTab === 'emergencies' ? 'text-red-400 border-b-2 border-red-400' : 'text-slate-400 hover:text-white'}`}
+        >
+          Hospital Wing
+        </button>
+        <button 
+          onClick={() => setActiveTab('civic')}
+          className={`px-4 py-2 font-semibold text-sm transition-colors ${activeTab === 'civic' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-white'}`}
+        >
+          Civic Department
+        </button>
+      </div>
+
+      {activeTab === 'emergencies' ? (
+        <>
+          {/* Hospital Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -66,7 +89,7 @@ export default function HospitalDashboard({ reports, hospitals, loading }: Hospi
         ) : (
           <div className="space-y-3">
             {reports
-              .filter(r => r.status === 'in-progress' && r.assignedToHospital)
+              .filter(r => r.status === 'in_progress' && r.assignedToHospital)
               .map(report => (
                 <div key={report.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-4">
@@ -133,6 +156,49 @@ export default function HospitalDashboard({ reports, hospitals, loading }: Hospi
           })}
         </div>
       </div>
+        </>
+      ) : (
+        <div className="mt-4">
+          <h2 className="text-xl font-semibold text-white mb-4">Civic Issue Queue</h2>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full mx-auto"></div>
+            </div>
+          ) : civicIssues.length === 0 ? (
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-8 text-center">
+              <p className="text-slate-400">No civic issues in queue</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {civicIssues.map((issue: any) => (
+                <div key={issue._id || issue.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex justify-between items-center gap-4 hover:bg-slate-700/50 transition">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 rounded text-xs font-semibold bg-indigo-500/20 text-indigo-400">
+                        {issue.category?.replace('_', ' ').toUpperCase()}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${issue.status === 'resolved' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                        {issue.status?.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="text-white font-semibold mb-2">{issue.description}</p>
+                    <p className="text-slate-400 text-sm">
+                      Reported: {new Date(issue.createdAt || issue.reportedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {issue.status !== 'resolved' && (
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                        Update Status
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

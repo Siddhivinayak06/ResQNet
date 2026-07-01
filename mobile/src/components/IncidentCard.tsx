@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
-import { formatDate, incidentTypeLabel, statusColor } from '../utils/helpers';
+import { Image, View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { formatDate, incidentTypeLabel, statusColor, getSeverityColor } from '../utils/helpers';
 import { colors, radius, spacing } from '../theme/colors';
 import { typography, shared } from '../theme/styles';
 
@@ -13,6 +13,9 @@ interface IncidentCardProps {
     reportedAt: string;
     latitude: number;
     longitude: number;
+    imageUrl?: string;
+    severity?: 'critical' | 'high' | 'medium' | 'low';
+    isOffline?: boolean;
   };
   onPress?: () => void;
 }
@@ -48,13 +51,36 @@ function IncidentCard({ incident, onPress }: IncidentCardProps) {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={typography.h4}>{incidentTypeLabel(incident.incidentType)}</Text>
-        <View style={[styles.badge, { backgroundColor: `${sColor}20`, borderColor: `${sColor}40` }]}>
-          <Text style={[styles.badgeText, { color: sColor }]}>
-            {incident.status.toUpperCase()}
-          </Text>
+        <View>
+          <Text style={typography.h4}>{incidentTypeLabel(incident.incidentType)}</Text>
+          {incident.severity && (
+            <Text style={[styles.severityText, { color: getSeverityColor(incident.severity) }]}>
+              {incident.severity.toUpperCase()} SEVERITY
+            </Text>
+          )}
+        </View>
+        <View style={styles.badgeContainer}>
+          {incident.isOffline && (
+            <View style={[styles.badge, { backgroundColor: `${colors.dark700}80`, borderColor: colors.dark600, marginRight: 8 }]}>
+              <Text style={[styles.badgeText, { color: colors.dark200 }]}>OFFLINE</Text>
+            </View>
+          )}
+          <View style={[styles.badge, { backgroundColor: `${sColor}20`, borderColor: `${sColor}40` }]}>
+            <Text style={[styles.badgeText, { color: sColor }]}>
+              {incident.status.toUpperCase()}
+            </Text>
+          </View>
         </View>
       </View>
+
+      {/* Image Preview */}
+      {incident.imageUrl && (
+        <Image 
+          source={{ uri: incident.imageUrl }} 
+          style={styles.imagePreview} 
+          resizeMode="cover"
+        />
+      )}
 
       {/* Description */}
       <Text style={styles.description} numberOfLines={2}>
@@ -90,6 +116,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   badge: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -100,6 +130,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  severityText: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 140,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
+    backgroundColor: colors.dark800,
   },
   description: {
     ...typography.bodySmall,

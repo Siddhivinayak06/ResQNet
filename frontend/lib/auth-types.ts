@@ -1,4 +1,14 @@
-export type UserRole = 'citizen' | 'volunteer' | 'admin';
+export type UserRole = 'citizen' | 'volunteer' | 'department_admin' | 'super_admin';
+
+export type IncidentType =
+  | 'accident'
+  | 'fire'
+  | 'medical'
+  | 'disaster'
+  | 'crime'
+  | 'hazmat'
+  | 'rescue'
+  | 'other';
 
 export interface User {
   id: string;
@@ -24,18 +34,22 @@ export interface AuthToken {
 }
 
 export interface EmergencyReport {
-  id: string;
+  _id: string;
+  id: string; // for compatibility
+  incidentType: IncidentType;
   description: string;
   latitude: number;
   longitude: number;
   timestamp: string;
-  severity: 'high' | 'medium' | 'low';
-  status: 'open' | 'assigned' | 'in-progress' | 'resolved';
+  reportedAt: string; // Added for map tooltip
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: 'pending' | 'verified' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'false_alarm';
   reportedBy: string;
   assignedTo?: string;
   assignedToHospital?: string;
   resolvedAt?: string;
-  photo?: string;
+  imageUrl?: string;
+  photo?: string; // backwards compatibility
 }
 
 export type Report = EmergencyReport;

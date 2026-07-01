@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
+
+
 import { IncidentMapItem, IncidentType, incidentTypeConfig } from './types';
 
 const iconCache = new Map<IncidentType, L.DivIcon>();
@@ -45,6 +47,13 @@ function MapBoundsController({ points }: { points: Array<[number, number]> }) {
 }
 
 export default function IncidentMap({ incidents }: { incidents: IncidentMapItem[] }) {
+  // Fix for React 18 Strict Mode and Fast Refresh: synchronously clear _leaflet_id before render
+  if (typeof window !== 'undefined') {
+    const wrapper = document.getElementById('incident-map-wrapper');
+    if (wrapper && wrapper.firstElementChild) {
+      (wrapper.firstElementChild as any)._leaflet_id = null;
+    }
+  }
   const points = useMemo(
     () => incidents.map((incident) => [incident.coordinates.lat, incident.coordinates.lng] as [number, number]),
     [incidents],
@@ -58,19 +67,20 @@ export default function IncidentMap({ incidents }: { incidents: IncidentMapItem[
     return [37.7749, -122.4194];
   }, [incidents]);
 
-  // Fix for React 18 Strict Mode / Next.js Fast Refresh crashing Leaflet:
-  // We generate a unique key for the MapContainer on mount. Fast Refresh preserves state
-  // but re-runs effects, so this will generate a new key ONLY on Fast Refresh/Mount,
-  // forcing React to create a fresh DOM node for Leaflet.
-  const [mapId, setMapId] = useState(() => Date.now());
+  const [isMounted, setIsMounted] = useState(false);
   
   useEffect(() => {
-    setMapId(Date.now());
+    setIsMounted(true);
+    return () => setIsMounted(false);
   }, []);
 
+  // Map container initialized properly by React-Leaflet v4 natively
+
+  if (!isMounted) return <div className="h-full w-full bg-slate-900 rounded-lg animate-pulse" />;
+
   return (
-    <MapContainer 
-      key={mapId}
+    <div id="incident-map-wrapper" className="h-full w-full relative">
+      <MapContainer 
       center={fallbackCenter} 
       zoom={12} 
       className="h-full w-full" 
@@ -120,6 +130,7 @@ export default function IncidentMap({ incidents }: { incidents: IncidentMapItem[
           </Marker>
         );
       })}
-    </MapContainer>
+      </MapContainer>
+    </div>
   );
 }

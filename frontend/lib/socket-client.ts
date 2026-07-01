@@ -14,8 +14,12 @@ export function getSocketClient(token?: string | null) {
   if (!socketInstance) {
     socketInstance = io(getSocketUrl(), {
       autoConnect: false,
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'], // Fallback to polling
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
     });
   }
 

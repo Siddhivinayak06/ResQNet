@@ -7,7 +7,7 @@ const router = Router();
 router.use(protect);
 
 router.route('/')
-  .post(authorize('admin'), createNotification)
+  .post(authorize('department_admin', 'super_admin'), createNotification)
   .get(getUserNotifications);
 
 router.patch('/read-all', markAllAsRead);

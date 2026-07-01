@@ -7,10 +7,12 @@ import {
   TouchableWithoutFeedback,
   StyleSheet,
   Dimensions,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { Incident } from '../services/incidentService';
 import { formatDate, statusColor, incidentTypeLabel } from '../utils/helpers';
-import { colors, radius } from '../theme/colors';
+import { colors, radius, spacing } from '../theme/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -97,11 +99,22 @@ export default function IncidentDetailModal({
                 </View>
               </View>
 
-              {/* Description */}
-              <View style={styles.descSection}>
-                <Text style={styles.sectionLabel}>Description</Text>
-                <Text style={styles.descText}>{incident.description}</Text>
-              </View>
+              {/* Scrollable Content */}
+              <ScrollView bounces={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                {/* Image */}
+                {incident.imageUrl && (
+                  <Image 
+                    source={{ uri: incident.imageUrl }} 
+                    style={styles.heroImage} 
+                    resizeMode="cover"
+                  />
+                )}
+
+                {/* Description */}
+                <View style={styles.descSection}>
+                  <Text style={styles.sectionLabel}>Description</Text>
+                  <Text style={styles.descText}>{incident.description}</Text>
+                </View>
 
               {/* Info Grid */}
               <View style={styles.infoGrid}>
@@ -120,10 +133,31 @@ export default function IncidentDetailModal({
                 />
               </View>
 
-              {/* Close */}
-              <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
-                <Text style={styles.closeBtnText}>Close</Text>
-              </TouchableOpacity>
+                {/* Timeline */}
+                {incident.timeline && incident.timeline.length > 0 && (
+                  <View style={styles.timelineSection}>
+                    <Text style={styles.sectionLabel}>Emergency History</Text>
+                    {incident.timeline.map((entry: any, index: number) => (
+                      <View key={index} style={styles.timelineItem}>
+                        <View style={styles.timelineLine} />
+                        <View style={styles.timelineDot} />
+                        <View style={styles.timelineContent}>
+                          <Text style={styles.timelineAction}>{entry.action}</Text>
+                          <Text style={styles.timelineTime}>{formatDate(entry.timestamp)}</Text>
+                          {entry.details ? (
+                            <Text style={styles.timelineDetails}>{entry.details}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Close */}
+                <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
+                  <Text style={styles.closeBtnText}>Close</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -219,4 +253,57 @@ const styles = StyleSheet.create({
     borderColor: colors.dark700,
   },
   closeBtnText: { color: colors.dark300, fontWeight: '600', fontSize: 16 },
+
+  heroImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: colors.dark800,
+    marginBottom: spacing.md,
+  },
+
+  timelineSection: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    marginTop: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    position: 'relative',
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 4,
+    top: 14,
+    bottom: -16,
+    width: 2,
+    backgroundColor: colors.dark700,
+  },
+  timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary500,
+    marginTop: 4,
+    marginRight: 12,
+    zIndex: 1,
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  timelineAction: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  timelineTime: {
+    color: colors.dark400,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  timelineDetails: {
+    color: colors.dark300,
+    fontSize: 13,
+    marginTop: 4,
+  }
 });

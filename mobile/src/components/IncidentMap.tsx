@@ -1,7 +1,9 @@
-import React, { useRef, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Easing } from 'react-native';
-import MapView, { Marker, Callout, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated, Easing, TouchableOpacity, ScrollView } from 'react-native';
+import MapView from 'react-native-map-clustering';
+import { Marker, Callout, Region, PROVIDER_DEFAULT, Polyline } from 'react-native-maps';
 import { Incident } from '../services/incidentService';
+import { CivicIssue } from '../services/civicIssueService';
 import { colors, radius, spacing } from '../theme/colors';
 import { shared, typography } from '../theme/styles';
 import { formatDate } from '../utils/helpers';
@@ -14,6 +16,9 @@ const MARKER_COLORS: Record<string, string> = {
   accident: colors.warning,
   crime: colors.purple,
   disaster: colors.danger,
+  hazmat: '#eab308',
+  rescue: '#3b82f6',
+  other: colors.dark400,
 };
 
 const MARKER_EMOJI: Record<string, string> = {
@@ -22,24 +27,39 @@ const MARKER_EMOJI: Record<string, string> = {
   accident: '🚗',
   crime: '🚔',
   disaster: '🌊',
+  hazmat: '☣️',
+  rescue: '🚁',
+  other: '⚠️',
 };
 
 interface IncidentMapProps {
   incidents: Incident[];
+  civicIssues?: CivicIssue[];
+  volunteers?: any[]; // optional volunteers list
   userLocation: { latitude: number; longitude: number } | null;
-  onMarkerPress?: (incident: Incident) => void;
+  onMarkerPress?: (item: any) => void;
   style?: object;
 }
 
 export default function IncidentMap({
   incidents,
+  civicIssues = [],
+  volunteers = [],
   userLocation,
   onMarkerPress,
   style,
 }: IncidentMapProps) {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const dotOpacity = useRef(new Animated.Value(1)).current;
   const btnScale = useRef(new Animated.Value(1)).current;
+
+  // Filter States
+  const [showIncidents, setShowIncidents] = useState(true);
+  const [showCivic, setShowCivic] = useState(true);
+  const [showVolunteers, setShowVolunteers] = useState(true);
+
+  // Selected item for mock routing
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   useEffect(() => {
     Animated.loop(
@@ -73,8 +93,14 @@ export default function IncidentMap({
     }
   }, [userLocation]);
 
+  const handleMarkerPress = (item: any) => {
+    setSelectedItem(item);
+    onMarkerPress?.(item);
+  };
+
   return (
     <View style={[styles.container, style]}>
+      {/* Map Content */}
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -84,15 +110,18 @@ export default function IncidentMap({
         showsMyLocationButton={false}
         showsCompass={false}
         customMapStyle={uberDarkMapStyle}
+        clusterColor={colors.primary500}
+        clusterTextColor={colors.white}
       >
-        {incidents.map((incident) => {
+        {/* Incidents Layer */}
+        {showIncidents && incidents.map((incident) => {
           const color = MARKER_COLORS[incident.incidentType] || colors.dark400;
           return (
             <Marker
-              key={incident._id}
+              key={`inc-${incident._id}`}
               coordinate={{ latitude: incident.latitude, longitude: incident.longitude }}
               pinColor={color}
-              onPress={() => onMarkerPress?.(incident)}
+              onPress={() => handleMarkerPress(incident)}
               tracksViewChanges={false}
             >
               <Callout tooltip>
@@ -108,22 +137,69 @@ export default function IncidentMap({
             </Marker>
           );
         })}
+
+        {/* Civic Issues Layer */}
+        {showCivic && civicIssues.map((issue) => {
+          if (!issue.latitude || !issue.longitude) return null;
+          return (
+            <Marker
+              key={`civic-${issue._id}`}
+              coordinate={{ latitude: issue.latitude, longitude: issue.longitude }}
+              pinColor={colors.purple}
+              onPress={() => handleMarkerPress(issue)}
+              tracksViewChanges={false}
+            >
+              <Callout tooltip>
+                <View style={styles.callout}>
+                  <Text style={typography.h4}>🏙️ {issue.category.replace('_', ' ').toUpperCase()}</Text>
+                  <Text style={styles.calloutDesc} numberOfLines={2}>{issue.description}</Text>
+                  <Text style={styles.calloutTime}>{issue.status}</Text>
+                </View>
+              </Callout>
+            </Marker>
+          );
+        })}
+
+        {selectedItem && userLocation && (
+          <Polyline
+            coordinates={[
+              { latitude: userLocation.latitude, longitude: userLocation.longitude },
+              { latitude: selectedItem.latitude, 
+                longitude: selectedItem.longitude }
+            ]}
+            strokeColor={colors.primary500}
+            strokeWidth={3}
+            lineDashPattern={[5, 5]}
+          />
+        )}
       </MapView>
+
+      {/* Floating Filter Pills */}
+      <View style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity 
+            style={[styles.filterPill, showIncidents && styles.filterPillActive]} 
+            onPress={() => setShowIncidents(!showIncidents)}
+          >
+            <Text style={styles.filterPillText}>🚨 Incidents</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterPill, showCivic && styles.filterPillActive]} 
+            onPress={() => setShowCivic(!showCivic)}
+          >
+            <Text style={styles.filterPillText}>🏙️ Civic Issues</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       <AnimatedPressable
         style={[styles.locateBtn, { transform: [{ scale: btnScale }] }]}
         onPress={centerOnUser}
         onPressIn={() => {
-          Animated.spring(btnScale, {
-            toValue: 0.9,
-            useNativeDriver: true,
-          }).start();
+          Animated.spring(btnScale, { toValue: 0.9, useNativeDriver: true }).start();
         }}
         onPressOut={() => {
-          Animated.spring(btnScale, {
-            toValue: 1,
-            useNativeDriver: true,
-          }).start();
+          Animated.spring(btnScale, { toValue: 1, useNativeDriver: true }).start();
         }}
       >
         <Text style={{ fontSize: 20 }}>📍</Text>
@@ -175,4 +251,29 @@ const styles = StyleSheet.create({
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary500, marginRight: 8, ...shared.glowRed },
   liveText: { color: colors.white, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  
+  filterBar: {
+    position: 'absolute',
+    bottom: spacing.md,
+    left: spacing.md,
+    right: 70, // leave space for locateBtn
+  },
+  filterPill: {
+    backgroundColor: colors.glassDark,
+    borderWidth: 1,
+    borderColor: colors.dark600,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    marginRight: spacing.xs,
+  },
+  filterPillActive: {
+    backgroundColor: colors.primary500,
+    borderColor: colors.primary400,
+  },
+  filterPillText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  }
 });

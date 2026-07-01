@@ -6,16 +6,15 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, Loader2, RefreshCw, ShieldAlert, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
+import { IncidentType } from '@/lib/auth-types';
 import { getApiBaseUrl } from '@/lib/api-client';
 import { disconnectSocketClient, getSocketClient } from '@/lib/socket-client';
 import dynamic from 'next/dynamic';
-import {
-  IncidentMapItem,
-  IncidentType,
-  incidentTypeConfig,
-} from '@/components/monitoring/types';
+import Sidebar from '@/components/layout/sidebar';
+import BottomTabs from '@/components/layout/bottom-tabs';
+import { MapItem, MarkerType, SeverityLevel } from '@/components/monitoring/live-city-map';
 
-const IncidentMap = dynamic(() => import('@/components/monitoring/incident-map'), { ssr: false });
+const LiveCityMap = dynamic(() => import('@/components/monitoring/live-city-map'), { ssr: false });
 
 type FilterType = 'all' | IncidentType;
 
@@ -44,7 +43,7 @@ function normalizeIncidentType(value?: string): IncidentType {
   if (normalized === 'accident') return 'accident';
   if (normalized === 'medical') return 'medical';
   if (normalized === 'disaster') return 'disaster';
-  return 'unknown';
+  return 'other';
 }
 
 function resolveCoordinates(incident: ApiIncident) {
@@ -60,32 +59,57 @@ function resolveCoordinates(incident: ApiIncident) {
   return null;
 }
 
-function normalizeIncident(incident: ApiIncident): IncidentMapItem | null {
+function normalizeIncident(incident: ApiIncident): MapItem | null {
   const coordinates = resolveCoordinates(incident);
-  if (!coordinates) {
-    return null;
-  }
-
-  const type = normalizeIncidentType(incident.incidentType ?? incident.type);
-  const config = incidentTypeConfig[type] ?? incidentTypeConfig.unknown;
+  if (!coordinates) return null;
   const reportedAt = incident.reportedAt ?? incident.timestamp ?? incident.createdAt ?? new Date().toISOString();
-
+  
   return {
-    id: incident.id ?? incident._id ?? `${coordinates.lat}-${coordinates.lng}-${reportedAt}`,
-    type,
-    typeLabel: config.label,
+    id: incident.id ?? incident._id ?? `inc-${coordinates.lat}-${coordinates.lng}`,
+    type: 'incident' as MarkerType,
+    title: (incident.incidentType ?? incident.type ?? 'Emergency').toUpperCase(),
     description: incident.description?.trim() || 'No description provided.',
+    lat: coordinates.lat,
+    lng: coordinates.lng,
+    severity: 'high' as SeverityLevel, // We can map this if backend supports it
     status: incident.status ?? 'unconfirmed',
-    reportedAt,
-    coordinates,
+    timestamp: reportedAt,
+  };
+}
+
+function normalizeCivicIssue(issue: any): MapItem | null {
+  if (!issue.location?.coordinates) return null;
+  const [lng, lat] = issue.location.coordinates;
+  return {
+    id: issue._id ?? `civic-${lat}-${lng}`,
+    type: 'civic' as MarkerType,
+    title: (issue.category ?? 'Civic Issue').replace('_', ' ').toUpperCase(),
+    description: issue.description?.trim() || 'No description',
+    lat,
+    lng,
+    status: issue.status,
+    timestamp: issue.reportedAt ?? issue.createdAt,
+  };
+}
+
+function normalizeUser(user: any): MapItem | null {
+  if (!user.location?.coordinates) return null;
+  const [lng, lat] = user.location.coordinates;
+  return {
+    id: user._id,
+    type: user.role === 'volunteer' ? 'volunteer' : 'admin',
+    title: user.name,
+    description: `Role: ${user.role} | Phone: ${user.phone}`,
+    lat,
+    lng,
+    status: user.status,
   };
 }
 
 export default function MonitoringPage() {
   const router = useRouter();
   const { user, token, isLoading: authLoading } = useAuth();
-  const [incidents, setIncidents] = useState<IncidentMapItem[]>([]);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [mapItems, setMapItems] = useState<MapItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -97,7 +121,7 @@ export default function MonitoringPage() {
     }
   }, [authLoading, user, router]);
 
-  const fetchIncidents = useCallback(async () => {
+  const fetchMapData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -107,34 +131,33 @@ export default function MonitoringPage() {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      const response = await axios.get(`${getApiBaseUrl()}/api/incidents`, {
-        headers,
-        withCredentials: true,
-      });
+      const [incidentsRes, civicRes, usersRes] = await Promise.all([
+        axios.get(`${getApiBaseUrl()}/incidents`, { headers, withCredentials: true }).catch(() => ({ data: [] })),
+        axios.get(`${getApiBaseUrl()}/civic-issues`, { headers, withCredentials: true }).catch(() => ({ data: { data: [] } })),
+        axios.get(`${getApiBaseUrl()}/users`, { headers, withCredentials: true }).catch(() => ({ data: { data: [] } }))
+      ]);
 
-      const payload = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.incidents)
-          ? response.data.incidents
-          : [];
+      const incPayload = Array.isArray(incidentsRes.data) ? incidentsRes.data : Array.isArray(incidentsRes.data?.incidents) ? incidentsRes.data.incidents : [];
+      const civPayload = Array.isArray(civicRes.data?.data) ? civicRes.data.data : [];
+      const usrPayload = Array.isArray(usersRes.data?.data) ? usersRes.data.data : [];
 
-      const normalized = payload
-        .map((incident: ApiIncident) => normalizeIncident(incident))
-        .filter((incident: IncidentMapItem | null): incident is IncidentMapItem => Boolean(incident));
+      const normalizedInc = incPayload.map(normalizeIncident).filter(Boolean) as MapItem[];
+      const normalizedCiv = civPayload.map(normalizeCivicIssue).filter(Boolean) as MapItem[];
+      const normalizedUsr = usrPayload.map(normalizeUser).filter(Boolean) as MapItem[];
 
-      setIncidents(normalized);
+      setMapItems([...normalizedInc, ...normalizedCiv, ...normalizedUsr]);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error('Failed to fetch incidents:', err);
-      setError('Unable to load incidents right now.');
+      console.error('Failed to fetch map data:', err);
+      setError('Unable to load map data right now.');
     } finally {
       setIsLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    fetchIncidents();
-  }, [fetchIncidents]);
+    fetchMapData();
+  }, [fetchMapData]);
 
   useEffect(() => {
     if (!user) {
@@ -146,49 +169,47 @@ export default function MonitoringPage() {
 
     const handleConnect = () => setIsLive(true);
     const handleDisconnect = () => setIsLive(false);
-    const handleRealtimeUpdate = () => fetchIncidents();
+    const handleRealtimeUpdate = () => fetchMapData();
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
-    socket.on('incident:created', handleRealtimeUpdate);
-    socket.on('incident:updated', handleRealtimeUpdate);
-    socket.on('report:created', handleRealtimeUpdate);
-    socket.on('report:updated', handleRealtimeUpdate);
+    socket.on('newIncident', handleRealtimeUpdate);
+    socket.on('incidentUpdated', handleRealtimeUpdate);
+    socket.on('newCivicIssue', handleRealtimeUpdate);
+    socket.on('civicIssueUpdated', handleRealtimeUpdate);
+    
+    // For live location updates, we update state directly to avoid API spam
+    const handleLocationUpdate = (payload: any) => {
+      setMapItems(prev => {
+        const userId = payload.userId;
+        const exists = prev.find(i => i.id === userId);
+        const lng = payload.location.coordinates[0];
+        const lat = payload.location.coordinates[1];
+        
+        if (exists) {
+          return prev.map(i => i.id === userId ? { ...i, lat, lng } : i);
+        } else {
+          // If the user isn't in the list yet, we'll fetch map data or just ignore
+          // since fetchMapData pulls all online users.
+          return prev;
+        }
+      });
+    };
+    socket.on('locationUpdate', handleLocationUpdate);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-      socket.off('incident:created', handleRealtimeUpdate);
-      socket.off('incident:updated', handleRealtimeUpdate);
-      socket.off('report:created', handleRealtimeUpdate);
-      socket.off('report:updated', handleRealtimeUpdate);
+      socket.off('newIncident', handleRealtimeUpdate);
+      socket.off('incidentUpdated', handleRealtimeUpdate);
+      socket.off('newCivicIssue', handleRealtimeUpdate);
+      socket.off('civicIssueUpdated', handleRealtimeUpdate);
+      socket.off('locationUpdate', handleLocationUpdate);
       disconnectSocketClient();
     };
-  }, [fetchIncidents, token, user]);
+  }, [fetchMapData, token, user]);
 
-  const counts = useMemo(() => {
-    const initial: Record<IncidentType, number> = {
-      fire: 0,
-      accident: 0,
-      medical: 0,
-      disaster: 0,
-      unknown: 0,
-    };
-
-    incidents.forEach((incident) => {
-      initial[incident.type] = (initial[incident.type] ?? 0) + 1;
-    });
-
-    return initial;
-  }, [incidents]);
-
-  const filteredIncidents = useMemo(() => {
-    if (activeFilter === 'all') {
-      return incidents;
-    }
-
-    return incidents.filter((incident) => incident.type === activeFilter);
-  }, [activeFilter, incidents]);
+  const activeIncidentsCount = useMemo(() => mapItems.filter(i => i.type === 'incident').length, [mapItems]);
 
   const lastUpdatedLabel = lastUpdated
     ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -203,8 +224,17 @@ export default function MonitoringPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex min-h-screen bg-slate-950 text-slate-100">
+      {/* Desktop Sidebar (Admins only) */}
+      {user && user.role !== 'citizen' && user.role !== 'volunteer' && (
+        <div className="hidden lg:flex w-[260px] shrink-0 border-r border-slate-900">
+          <div className="sticky top-0 h-screen w-full bg-slate-950 overflow-hidden">
+            <Sidebar />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 flex flex-col md:flex-row min-w-0 pb-[80px] lg:pb-0">
         <aside className="flex w-full flex-col gap-6 border-b border-slate-900 bg-slate-950/90 px-5 py-6 md:w-80 md:border-b-0 md:border-r">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -233,16 +263,16 @@ export default function MonitoringPage() {
               <span>Last update {lastUpdatedLabel}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-slate-300">
-              <span className="text-2xl font-semibold text-white">{incidents.length}</span>
-              active incidents tracked
+              <span className="text-2xl font-semibold text-white">{activeIncidentsCount}</span>
+              active emergencies tracked
             </div>
             <Button
               variant="outline"
-              onClick={fetchIncidents}
+              onClick={fetchMapData}
               className="w-full justify-center gap-2 border-slate-800 bg-slate-950 text-slate-100 hover:bg-slate-900"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh feed
+              Refresh map
             </Button>
           </div>
 
@@ -255,57 +285,14 @@ export default function MonitoringPage() {
             </div>
           )}
 
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Filters</p>
-            <div className="grid gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveFilter('all')}
-                className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition ${
-                  activeFilter === 'all'
-                    ? 'border-white/20 bg-white/10 text-white'
-                    : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  All incidents
-                </span>
-                <span className="text-xs text-slate-400">{incidents.length}</span>
-              </button>
-              {orderedIncidentTypes.map((type) => {
-                const config = incidentTypeConfig[type];
-                const isActive = activeFilter === type;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setActiveFilter(type)}
-                    className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition ${
-                      isActive
-                        ? 'border-white/20 bg-white/10 text-white'
-                        : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: config.color }} />
-                      {config.label}
-                    </span>
-                    <span className="text-xs text-slate-400">{counts[type]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="mt-auto rounded-xl border border-slate-900 bg-slate-950/60 px-4 py-3 text-xs text-slate-400">
-            Monitor incoming incidents and dispatch resources in real time. Incident data updates automatically when new reports arrive.
+            Monitor incoming incidents, civic issues, and dispatch resources in real time. Map updates automatically.
           </div>
         </aside>
 
         <section className="relative flex-1">
           <div className="absolute inset-0">
-            <IncidentMap incidents={filteredIncidents} />
+            <LiveCityMap items={mapItems} />
           </div>
 
           {isLoading && (
@@ -317,15 +304,18 @@ export default function MonitoringPage() {
             </div>
           )}
 
-          {!isLoading && filteredIncidents.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40">
+          {!isLoading && mapItems.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 pointer-events-none">
               <div className="rounded-2xl border border-slate-800 bg-slate-950/80 px-6 py-4 text-sm text-slate-200">
-                No incidents match the selected filter.
+                No data available on the map.
               </div>
             </div>
           )}
         </section>
-      </div>
-    </main>
+      </main>
+
+      {/* Mobile Bottom Navigation (Citizens/Volunteers only) */}
+      {user && (user.role === 'citizen' || user.role === 'volunteer') && <BottomTabs />}
+    </div>
   );
 }

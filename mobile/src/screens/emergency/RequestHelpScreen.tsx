@@ -9,13 +9,14 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   StyleSheet,
+  ActivityIndicator,
   Animated,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { IncidentType } from '../../services/incidentService';
+import { IncidentType, IncidentSeverity } from '../../services/incidentService';
 import { ApiError } from '../../services/api';
 import {
   getCurrentLocation,
@@ -58,6 +59,17 @@ const INCIDENT_TYPES: { value: IncidentType; emoji: string; label: string }[] = 
   { value: 'fire', emoji: '🔥', label: 'Fire' },
   { value: 'accident', emoji: '🚗', label: 'Accident' },
   { value: 'disaster', emoji: '🌊', label: 'Disaster' },
+  { value: 'crime', emoji: '🚔', label: 'Crime' },
+  { value: 'hazmat', emoji: '☣️', label: 'Hazmat' },
+  { value: 'rescue', emoji: '🚁', label: 'Rescue' },
+  { value: 'other', emoji: '⚠️', label: 'Other' },
+];
+
+const SEVERITIES: { value: IncidentSeverity; label: string; color: string }[] = [
+  { value: 'critical', label: 'Critical', color: colors.danger },
+  { value: 'high', label: 'High', color: '#ea580c' },
+  { value: 'medium', label: 'Medium', color: '#eab308' },
+  { value: 'low', label: 'Low', color: '#3b82f6' },
 ];
 
 function LocationCard({ status, location, onRetry }: { status: LocationStatus; location: LocationData | null; onRetry: () => void; }) {
@@ -93,7 +105,9 @@ function LocationCard({ status, location, onRetry }: { status: LocationStatus; l
 // ─── Main Screen ───
 export default function RequestHelpScreen({ navigation }: Props) {
   const [incidentType, setIncidentType] = useState<IncidentType | ''>('');
+  const [severity, setSeverity] = useState<IncidentSeverity>('medium');
   const [description, setDescription] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -137,7 +151,15 @@ export default function RequestHelpScreen({ navigation }: Props) {
   const doSubmit = async (lat: number, lng: number) => {
     setLoading(true);
     try {
-      const result = await submitOrQueue({ incidentType: incidentType as IncidentType, description: description.trim(), latitude: lat, longitude: lng });
+      const payload = {
+        incidentType: incidentType as IncidentType, 
+        description: description.trim(), 
+        latitude: lat, 
+        longitude: lng,
+        severity,
+        imageUrl: imageUrl || undefined,
+      };
+      const result = await submitOrQueue('incident', payload);
       if (result.online) {
         Alert.alert('🚨 Submitted', 'Help is on the way!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
       } else {
@@ -211,6 +233,48 @@ export default function RequestHelpScreen({ navigation }: Props) {
             </Text>
           </FadeInView>
 
+          <FadeInView delay={450} style={styles.section}>
+            <Text style={typography.label}>Severity</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {SEVERITIES.map((sev) => {
+                const sel = severity === sev.value;
+                return (
+                  <TouchableOpacity
+                    key={sev.value}
+                    onPress={() => setSeverity(sev.value)}
+                    style={[
+                      styles.sevCard,
+                      sel && { borderColor: sev.color, backgroundColor: `${sev.color}20` }
+                    ]}
+                  >
+                    <Text style={[styles.sevLabel, sel && { color: sev.color }]}>{sev.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </FadeInView>
+
+          <FadeInView delay={500} style={styles.section}>
+            <Text style={typography.label}>Attach Photo (Optional)</Text>
+            {imageUrl ? (
+              <View style={{ position: 'relative' }}>
+                <Image source={{ uri: imageUrl }} style={styles.previewImage} />
+                <TouchableOpacity onPress={() => setImageUrl(null)} style={styles.removeImageBtn}>
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setImageUrl('https://images.unsplash.com/photo-1627581698246-8608e6f30a91?q=80&w=1470&auto=format&fit=crop')}
+                style={styles.attachBtn}
+              >
+                <Text style={{ fontSize: 24, marginBottom: 8 }}>📸</Text>
+                <Text style={{ color: colors.dark300, fontWeight: '600' }}>Tap to take a photo</Text>
+                <Text style={{ color: colors.dark500, fontSize: 11, marginTop: 4 }}>(Uses mock image for now)</Text>
+              </TouchableOpacity>
+            )}
+          </FadeInView>
+
           <View style={styles.section}>
             <LocationCard status={locationStatus} location={location} onRetry={fetchLocation} />
           </View>
@@ -249,4 +313,22 @@ const styles = StyleSheet.create({
   typeCardSelected: { borderColor: colors.primary500, backgroundColor: colors.primary600_10 },
   typeLabel: { fontSize: 14, fontWeight: '700', color: colors.dark300 },
   typeLabelSelected: { color: colors.primary400 },
+  
+  sevCard: {
+    flex: 1, paddingVertical: spacing.md, borderRadius: radius.md,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.dark700, backgroundColor: colors.dark900,
+  },
+  sevLabel: { fontSize: 12, fontWeight: '700', color: colors.dark400 },
+
+  attachBtn: {
+    borderWidth: 2, borderColor: colors.dark700, borderStyle: 'dashed', borderRadius: radius.xl,
+    paddingVertical: 32, alignItems: 'center', backgroundColor: colors.dark900,
+  },
+  previewImage: {
+    width: '100%', height: 200, borderRadius: radius.xl, backgroundColor: colors.dark800,
+  },
+  removeImageBtn: {
+    position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
+  }
 });

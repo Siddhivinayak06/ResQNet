@@ -8,13 +8,13 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (payload: {
     email: string;
     password: string;
     name: string;
     role: UserRole;
-  }) => Promise<void>;
+  }, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (role: UserRole | UserRole[]) => boolean;
   canAccess: (requiredRole: UserRole | UserRole[]) => boolean;
@@ -57,30 +57,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const setAuthState = (authToken: string, authUser: User) => {
-    setToken(authToken);
+  const setAuthState = (accessToken: string, refreshToken: string, authUser: User, rememberMe: boolean = true) => {
+    setToken(accessToken);
     setUser(authUser);
 
-    localStorage.setItem('auth_token', authToken);
-    localStorage.setItem('auth_user', JSON.stringify(authUser));
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem('auth_access_token', accessToken);
+    storage.setItem('auth_refresh_token', refreshToken);
+    storage.setItem('auth_user', JSON.stringify(authUser));
   };
 
   const clearAuthState = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_access_token');
+      localStorage.removeItem('auth_refresh_token');
+      localStorage.removeItem('auth_user');
+      sessionStorage.removeItem('auth_access_token');
+      sessionStorage.removeItem('auth_refresh_token');
+      sessionStorage.removeItem('auth_user');
+    }
   };
 
-  // Initialize auth from localStorage
+  // Initialize auth from storage
   useEffect(() => {
-    const storedToken = localStorage.getItem('auth_token');
-    const storedUser = localStorage.getItem('auth_user');
+    const storage = localStorage.getItem('auth_refresh_token') ? localStorage : sessionStorage;
+    const storedAccessToken = storage.getItem('auth_access_token');
+    const storedRefreshToken = storage.getItem('auth_refresh_token');
+    const storedUser = storage.getItem('auth_user');
 
-    if (storedToken && storedUser) {
+    if (storedAccessToken && storedUser) {
       try {
-        if (!isTokenExpired(storedToken)) {
-          setToken(storedToken);
+        if (!isTokenExpired(storedAccessToken)) {
+          setToken(storedAccessToken);
+          setUser(JSON.parse(storedUser));
+        } else if (storedRefreshToken) {
+          // Token expired but we have a refresh token. Let the api client handle rotation.
+          setToken(storedAccessToken);
           setUser(JSON.parse(storedUser));
         } else {
           clearAuthState();
@@ -91,13 +105,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(false);
+
+    const handleRotated = (e: any) => {
+      setToken(e.detail.accessToken);
+    };
+    const handleUnauthorized = () => {
+      clearAuthState();
+    };
+
+    window.addEventListener('auth:rotated', handleRotated);
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+    return () => {
+      window.removeEventListener('auth:rotated', handleRotated);
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = true) => {
     setIsLoading(true);
 
     try {
-      const response = await apiFetch('/api/auth/login', {
+      const response = await apiFetch('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -108,8 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || data.errors?.[0] || 'Login failed');
       }
 
-      // Backend returns: { success, data: { user, token } }
-      setAuthState(data.data.token, data.data.user);
+      setAuthState(data.data.accessToken, data.data.refreshToken, data.data.user, rememberMe);
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -123,11 +151,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string;
     name: string;
     role: UserRole;
-  }) => {
+  }, rememberMe: boolean = true) => {
     setIsLoading(true);
 
     try {
-      const response = await apiFetch('/api/auth/register', {
+      const response = await apiFetch('/auth/register', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -138,8 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || data.errors?.[0] || 'Registration failed');
       }
 
-      // Backend returns: { success, data: { user, token } }
-      setAuthState(data.data.token, data.data.user);
+      setAuthState(data.data.accessToken, data.data.refreshToken, data.data.user, rememberMe);
     } catch (error) {
       console.error('Register error:', error);
       throw error;
@@ -150,9 +177,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await apiFetch('/api/auth/logout', {
+      const storage = localStorage.getItem('auth_refresh_token') ? localStorage : sessionStorage;
+      const currentToken = storage.getItem('auth_access_token');
+      
+      await apiFetch('/auth/logout', {
         method: 'POST',
-        token,
+        token: currentToken,
       });
     } catch (error) {
       console.error('Logout error:', error);

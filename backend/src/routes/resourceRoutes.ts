@@ -5,10 +5,10 @@ import { protect, authorize } from '../middleware/auth.js';
 const router = Router();
 
 router.route('/')
-  .post(protect, authorize('admin', 'hospital'), createResource)
+  .post(protect, authorize('department_admin', 'super_admin'), createResource)
   .get(protect, getResources);
 
 router.route('/:id')
-  .patch(protect, authorize('admin', 'hospital'), updateResource);
+  .patch(protect, authorize('department_admin', 'super_admin'), updateResource);
 
 export default router;

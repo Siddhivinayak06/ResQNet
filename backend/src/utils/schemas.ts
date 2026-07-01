@@ -46,6 +46,43 @@ export const assignIncidentSchema = z.object({
   vehicleIds: z.array(z.string()).optional(),
 });
 
+// ─── Civic Issue Schemas ─────────────────────────────────────
+
+export const createCivicIssueSchema = z.object({
+  category: z.enum([
+    'pothole', 'garbage', 'streetlight', 'water_leakage', 
+    'sewage', 'illegal_dumping', 'damaged_road', 
+    'fallen_tree', 'traffic_signal', 'property_damage', 'other'
+  ]),
+  description: z.string().min(10).max(5000).trim(),
+  location: z.object({
+    type: z.literal('Point'),
+    coordinates: z.tuple([z.number(), z.number()])
+  }),
+  address: z.string().optional(),
+  severity: z.enum(['critical', 'high', 'medium', 'low']).default('medium'),
+  imageUrl: z.string().url().optional(),
+});
+
+export const updateCivicIssueStatusSchema = z.object({
+  status: z.enum(['reported', 'under_review', 'assigned', 'in_progress', 'resolved', 'closed']),
+});
+
+// ─── Department Schemas ──────────────────────────────────────
+
+export const createDepartmentSchema = z.object({
+  name: z.string().min(2).max(100).trim(),
+  type: z.enum(['police', 'fire', 'medical', 'water', 'electricity', 'municipal', 'traffic', 'forest', 'other']),
+  description: z.string().optional(),
+  contactEmail: z.string().email(),
+  contactPhone: z.string().min(5),
+  headquartersLocation: z.object({
+    type: z.literal('Point'),
+    coordinates: z.tuple([z.number(), z.number()])
+  }),
+  handledCategories: z.array(z.string()).optional(),
+});
+
 // ─── Hospital Schemas ────────────────────────────────────────
 
 export const createHospitalSchema = z.object({

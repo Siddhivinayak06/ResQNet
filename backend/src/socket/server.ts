@@ -59,12 +59,18 @@ export function initializeSocket(httpServer: HTTPServer): SocketServer {
 
     logger.debug(`🔌 Socket connected: ${socket.id} (user: ${userId || 'anonymous'})`);
 
-    // Track connected users
+    // Track connected users and join role-specific room
     if (userId) {
       if (!connectedUsers.has(userId)) {
         connectedUsers.set(userId, new Set());
       }
       connectedUsers.get(userId)!.add(socket.id);
+
+      // Join role room (e.g. role:citizen, role:volunteer)
+      if (user?.role) {
+        socket.join(`role:${user.role}`);
+        logger.debug(`📡 Socket ${socket.id} joined role:${user.role}`);
+      }
 
       // Broadcast presence
       socket.broadcast.emit('presenceUpdate', { userId, status: 'online' });
@@ -96,14 +102,20 @@ export function initializeSocket(httpServer: HTTPServer): SocketServer {
     // ─── Location updates ──────────────────────────────
     socket.on('updateLocation', (data) => {
       if (userId) {
-        io!.emit('locationUpdate', {
+        const payload = {
           userId,
           location: {
-            type: 'Point',
-            coordinates: [data.longitude, data.latitude],
+            type: 'Point' as const,
+            coordinates: [data.longitude, data.latitude] as [number, number],
           },
           timestamp: new Date(),
-        });
+        };
+        // Emit to admins and super admins for tracking
+        io!.to('role:department_admin').to('role:super_admin').emit('locationUpdate', payload);
+        
+        // Also emit globally for now since LiveCityMap might be used by anyone, but we restrict it for best practice.
+        // If we want everyone to see it:
+        io!.emit('locationUpdate', payload);
       }
     });
 

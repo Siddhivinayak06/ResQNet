@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import Navigation from '@/components/navigation';
+import DashboardLayout from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -180,7 +180,7 @@ export default function ReportPage() {
 
       if ('serviceWorker' in navigator && 'SyncManager' in window) {
         const registration = await navigator.serviceWorker.ready;
-        await registration.sync.register('sync-incidents');
+        await (registration as any).sync.register('sync-incidents');
       }
 
       setStatusMessage({
@@ -214,7 +214,7 @@ export default function ReportPage() {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      await axios.post(`${getApiBaseUrl()}/api/incidents`, formData, {
+      await axios.post(`${getApiBaseUrl()}/incidents`, formData, {
         headers,
         withCredentials: true,
       });
@@ -256,13 +256,14 @@ export default function ReportPage() {
   const isFormValid = Boolean(incidentType && description.trim() && location);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-amber-50 via-rose-50 to-slate-50">
-      <Navigation />
+    <DashboardLayout 
+      title="Report Emergency" 
+      description="Provide quick, accurate details so responders can act fast."
+    >
       <div className="relative">
         <div className="pointer-events-none absolute -top-32 right-0 h-72 w-72 rounded-full bg-rose-200/60 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-0 h-72 w-72 rounded-full bg-amber-200/60 blur-3xl" />
-        <div className="container mx-auto px-4 py-12">
-          <div className="mx-auto max-w-3xl">
+        <div className="container mx-auto px-4 py-8 max-w-3xl">
             <Card className="border-rose-100/70 bg-white/90 shadow-xl backdrop-blur">
               <CardHeader className="space-y-2">
                 <div className="flex items-center gap-4">
@@ -455,9 +456,8 @@ export default function ReportPage() {
                 </div>
               </CardFooter>
             </Card>
-          </div>
         </div>
       </div>
-    </main>
+    </DashboardLayout>
   );
 }

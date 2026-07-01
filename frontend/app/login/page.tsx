@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const { login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,7 +26,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -91,6 +93,21 @@ export default function LoginPage() {
             required
             disabled={isLoading}
           />
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="rememberMe" 
+            checked={rememberMe} 
+            onCheckedChange={(checked) => setRememberMe(checked === true)}
+            disabled={isLoading}
+          />
+          <Label
+            htmlFor="rememberMe"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Remember me
+          </Label>
         </div>
 
         <Button type="submit" className="w-full bg-brand-gradient text-white" disabled={isLoading}>

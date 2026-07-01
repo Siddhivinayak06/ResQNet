@@ -40,7 +40,7 @@ router.post('/', optionalAuth, validate({ body: createIncidentSchema }), createI
 router.patch(
   '/:id/status',
   protect,
-  authorize('admin', 'super_admin', 'responder', 'police_admin', 'fire_admin'),
+  authorize('department_admin', 'super_admin', 'volunteer'),
   validate({ params: idParamSchema, body: updateIncidentStatusSchema }),
   updateIncidentStatus,
 );
@@ -56,7 +56,7 @@ router.post(
 router.delete(
   '/:id',
   protect,
-  authorize('admin', 'super_admin'),
+  authorize('super_admin'),
   validate({ params: idParamSchema }),
   deleteIncident,
 );

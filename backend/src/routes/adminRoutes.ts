@@ -5,7 +5,7 @@ import { protect, authorize } from '../middleware/auth.js';
 const router = Router();
 
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('super_admin'));
 
 router.get('/stats', getSystemStats);
 
